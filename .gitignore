@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# SPM (caso entre no futuro)
+.swiftpm/
+.build/
+
+# Segredos locais — nunca commitar
+*.local.json
+.env
