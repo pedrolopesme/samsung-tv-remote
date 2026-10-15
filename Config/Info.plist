@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App de menu bar: sem ícone no Dock. -->
+	<key>LSUIElement</key>
+	<true/>
+	<!-- macOS 15+: prompt de permissão de rede local. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>O Samsung Remote conversa com a sua TV pela rede local para enviar os comandos do controle.</string>
+	<!-- REST da TV é HTTP (porta 8001) e o WebSocket usa certificado autoassinado (8002). -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+</dict>
+</plist>
