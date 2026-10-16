@@ -177,7 +177,7 @@ final class RemoteModel {
             status = .connected
             requestInstalledApps()
             #if DEBUG
-            probeApplicationGet()
+            probeLaunchNetflix()
             #endif
         } catch {
             client.disconnect()
@@ -257,44 +257,16 @@ final class RemoteModel {
     }
 
     #if DEBUG
-    /// Sonda experimental e temporária: `ed.installedApp.get` não existe no binário de TVs
-    /// Tizen 2021+ (achado real, ver PR). Testa se `ms.application.get` (método de topo,
-    /// confirmado em decompile de uma TV da mesma geração) responde algo nesta TV. Remover
-    /// depois de confirmar o formato real — não é parte da spec 0002, é só diagnóstico.
-    private struct ApplicationGetByParamsId: Encodable {
-        let method = "ms.application.get"
-        let params: Params
-        struct Params: Encodable { let id: String }
-    }
-
-    private struct ApplicationGetByParamsAppId: Encodable {
-        let method = "ms.application.get"
-        let params: Params
-        struct Params: Encodable { let appId: String }
-    }
-
-    private struct ApplicationGetTopLevelId: Encodable {
-        let method = "ms.application.get"
-        let id: String
-    }
-
-    private func probeApplicationGet(appId: String = "3201907018807") {
+    /// Teste direto e temporário: `ed.apps.launch` funciona com o `appId` de referência,
+    /// sem confirmar instalação antes (já que `ed.installedApp.get`/`ms.application.get`
+    /// não existem nesta geração de firmware — ver PR)? Abre Netflix de verdade se funcionar.
+    /// Remover depois de confirmar.
+    private func probeLaunchNetflix() {
         guard let client else { return }
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        let candidates: [any Encodable] = [
-            ApplicationGetByParamsId(params: .init(id: appId)),
-            ApplicationGetByParamsAppId(params: .init(appId: appId)),
-            ApplicationGetTopLevelId(id: appId),
-        ]
-        for (index, candidate) in candidates.enumerated() {
-            guard let data = try? encoder.encode(candidate) else { continue }
-            let raw = String(decoding: data, as: UTF8.self)
-            Task {
-                try? await Task.sleep(for: .milliseconds(300 * index))
-                print("[TV] sonda #\(index + 1) enviada: \(raw)")
-                try? await client.send(raw)
-            }
+        let appId = "3201907018807"
+        Task {
+            print("[TV] testando ed.apps.launch direto (Netflix, appId \(appId))")
+            try? await client.send(RemoteMessage.launchApp(appId: appId))
         }
     }
     #endif
