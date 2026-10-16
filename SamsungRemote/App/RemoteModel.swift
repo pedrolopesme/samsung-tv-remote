@@ -176,6 +176,9 @@ final class RemoteModel {
             self.client = client
             status = .connected
             requestInstalledApps()
+            #if DEBUG
+            probeApplicationGet()
+            #endif
         } catch {
             client.disconnect()
             status = .disconnected
@@ -252,6 +255,49 @@ final class RemoteModel {
         #endif
         Task { try? await client.send(RemoteMessage.installedAppsRequest()) }
     }
+
+    #if DEBUG
+    /// Sonda experimental e temporária: `ed.installedApp.get` não existe no binário de TVs
+    /// Tizen 2021+ (achado real, ver PR). Testa se `ms.application.get` (método de topo,
+    /// confirmado em decompile de uma TV da mesma geração) responde algo nesta TV. Remover
+    /// depois de confirmar o formato real — não é parte da spec 0002, é só diagnóstico.
+    private struct ApplicationGetByParamsId: Encodable {
+        let method = "ms.application.get"
+        let params: Params
+        struct Params: Encodable { let id: String }
+    }
+
+    private struct ApplicationGetByParamsAppId: Encodable {
+        let method = "ms.application.get"
+        let params: Params
+        struct Params: Encodable { let appId: String }
+    }
+
+    private struct ApplicationGetTopLevelId: Encodable {
+        let method = "ms.application.get"
+        let id: String
+    }
+
+    private func probeApplicationGet(appId: String = "3201907018807") {
+        guard let client else { return }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let candidates: [any Encodable] = [
+            ApplicationGetByParamsId(params: .init(id: appId)),
+            ApplicationGetByParamsAppId(params: .init(appId: appId)),
+            ApplicationGetTopLevelId(id: appId),
+        ]
+        for (index, candidate) in candidates.enumerated() {
+            guard let data = try? encoder.encode(candidate) else { continue }
+            let raw = String(decoding: data, as: UTF8.self)
+            Task {
+                try? await Task.sleep(for: .milliseconds(300 * index))
+                print("[TV] sonda #\(index + 1) enviada: \(raw)")
+                try? await client.send(raw)
+            }
+        }
+    }
+    #endif
 
     private func applyInstalledApps(_ apps: [InstalledApp]) {
         appsQueried = true
