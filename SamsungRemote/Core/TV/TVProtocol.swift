@@ -35,6 +35,19 @@ enum TVEndpoint {
         return components.url
     }
 
+    /// `http://<host>:8001/api/v2/applications/<appId>` — `GET` consulta (200 instalado,
+    /// 404 não), `POST` lança. Validado na AU8000 real (ver `docs/specs/0002-atalhos-de-apps.md`),
+    /// ao contrário do canal `ed.*` do WebSocket, que essa geração de firmware não implementa.
+    static func applicationURL(host: String, appId: String) -> URL? {
+        guard isValidHost(host), !appId.isEmpty else { return nil }
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = host
+        components.port = restPort
+        components.path = "/api/v2/applications/\(appId)"
+        return components.url
+    }
+
     static func isValidHost(_ host: String) -> Bool {
         let trimmed = host.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed == host else { return false }
@@ -43,7 +56,7 @@ enum TVEndpoint {
     }
 }
 
-/// Mensagens enviadas pelo app à TV.
+/// Mensagens enviadas pelo app à TV pelo WebSocket.
 enum RemoteMessage {
     enum Action: String, Sendable {
         /// Pressiona e solta (um toque).

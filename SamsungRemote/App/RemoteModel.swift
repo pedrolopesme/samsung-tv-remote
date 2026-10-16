@@ -26,12 +26,26 @@ final class RemoteModel {
 
     private let store: ConfigurationStore
     private let tokens: any TokenStore
+    private let appFavorites: AppFavoritesStore
     private var client: TVWebSocketClient?
     private var connectTask: Task<Void, Never>?
 
-    init(store: ConfigurationStore = ConfigurationStore(), tokens: any TokenStore = KeychainTokenStore()) {
+    /// Apps conhecidos resolvidos via REST (`TVApplicationClient.isAvailable`) contra esta TV.
+    private(set) var resolvedApps: [ResolvedApp] = []
+    /// Chaves de `KnownApp` marcadas como favoritas, na ordem em que foram marcadas.
+    private(set) var favoriteKeys: [String]
+    /// `true` assim que a resolução REST terminou (mesmo que nenhum app conhecido exista nesta TV).
+    private(set) var appsQueried = false
+
+    init(
+        store: ConfigurationStore = ConfigurationStore(),
+        tokens: any TokenStore = KeychainTokenStore(),
+        appFavorites: AppFavoritesStore = AppFavoritesStore()
+    ) {
         self.store = store
         self.tokens = tokens
+        self.appFavorites = appFavorites
+        self.favoriteKeys = appFavorites.load()
         let saved = store.load()
         self.configuration = saved
         self.status = saved == nil ? .notConfigured : .disconnected
@@ -155,6 +169,7 @@ final class RemoteModel {
             }
             self.client = client
             status = .connected
+            resolveKnownApps()
         } catch {
             client.disconnect()
             status = .disconnected
@@ -165,12 +180,16 @@ final class RemoteModel {
     private func handleDisconnect(of client: TVWebSocketClient) {
         guard self.client === client else { return }
         self.client = nil
+        resolvedApps = []
+        appsQueried = false
         if status == .connected { status = .disconnected }
     }
 
     private func dropConnection() {
         client?.disconnect()
         client = nil
+        resolvedApps = []
+        appsQueried = false
         if configuration != nil { status = .disconnected }
     }
 
@@ -190,6 +209,61 @@ final class RemoteModel {
             handleDisconnect(of: client)
             await connect()
             try? await self.client?.send(RemoteMessage.key(key))
+        }
+    }
+
+    // MARK: - Apps
+
+    /// Apps favoritos presentes na TV conectada, na ordem em que foram marcados.
+    /// Vazio = linha de atalhos oculta (`RemoteView`), consistente com FR-4/FR-6 da spec 0002.
+    var favoriteApps: [ResolvedApp] {
+        let resolvedByKey = Dictionary(uniqueKeysWithValues: resolvedApps.map { ($0.id, $0) })
+        return favoriteKeys.compactMap { resolvedByKey[$0] }
+    }
+
+    func setFavorite(_ key: String, isFavorite: Bool) {
+        if isFavorite {
+            guard !favoriteKeys.contains(key) else { return }
+            favoriteKeys.append(key)
+        } else {
+            favoriteKeys.removeAll { $0 == key }
+        }
+        appFavorites.save(favoriteKeys)
+    }
+
+    /// Lança o app via `POST /api/v2/applications/<appId>` (REST — o WebSocket `ed.apps.launch`
+    /// não existe nesta geração de firmware, ver `TVApplicationClient`). Fire-and-forget: a TV
+    /// não garante confirmação útil além do status HTTP (FR-5/FR-6 da spec 0002).
+    func launchApp(_ resolved: ResolvedApp) {
+        guard let host = configuration?.host else { return }
+        Task { await TVApplicationClient.launch(host: host, appId: resolved.appId) }
+    }
+
+    /// Testa, em paralelo, os `appId` candidatos de cada `KnownApp` via `GET` REST; o primeiro
+    /// que responder 200 vira o `appId` resolvido para essa TV. Nunca bloqueia nem atrasa o
+    /// resto do controle (FR-1/FR-6) — roda numa task à parte.
+    private func resolveKnownApps() {
+        guard let host = configuration?.host else { return }
+        Task { [weak self] in
+            var resolved: [ResolvedApp] = []
+            await withTaskGroup(of: ResolvedApp?.self) { group in
+                for known in KnownApp.all {
+                    group.addTask {
+                        for candidate in known.candidateAppIds {
+                            if await TVApplicationClient.isAvailable(host: host, appId: candidate) {
+                                return ResolvedApp(app: known, appId: candidate)
+                            }
+                        }
+                        return nil
+                    }
+                }
+                for await result in group {
+                    if let result { resolved.append(result) }
+                }
+            }
+            guard let self else { return }
+            self.resolvedApps = KnownApp.all.compactMap { known in resolved.first { $0.app.key == known.key } }
+            self.appsQueried = true
         }
     }
 

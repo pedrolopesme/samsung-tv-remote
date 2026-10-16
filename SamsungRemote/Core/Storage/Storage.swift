@@ -33,6 +33,25 @@ struct ConfigurationStore {
     }
 }
 
+/// Favoritos de atalhos de apps, por chave (`KnownApp.key`), ordenados pela ordem de marcação.
+/// Ver `docs/specs/0002-atalhos-de-apps.md`.
+struct AppFavoritesStore {
+    private let defaults: UserDefaults
+    private let key = "tv.apps.favorites.v1"
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    func load() -> [String] {
+        defaults.stringArray(forKey: key) ?? []
+    }
+
+    func save(_ keys: [String]) {
+        defaults.set(keys, forKey: key)
+    }
+}
+
 /// Onde guardamos o token de pareamento devolvido pela TV.
 protocol TokenStore {
     func token(for tvID: String) -> String?
