@@ -100,8 +100,20 @@ final class TVWebSocketClient: NSObject, URLSessionDelegate, @unchecked Sendable
             while !Task.isCancelled {
                 do {
                     let message = try await task.receive()
-                    if case .string(let text) = message {
+                    switch message {
+                    case .string(let text):
+                        #if DEBUG
+                        print("[TV] recebido: \(text)")
+                        #endif
                         self?.onMessage?(text)
+                    case .data(let data):
+                        #if DEBUG
+                        print("[TV] recebido (binário, \(data.count) bytes, ignorado)")
+                        #endif
+                    @unknown default:
+                        #if DEBUG
+                        print("[TV] recebido (tipo desconhecido, ignorado)")
+                        #endif
                     }
                 } catch {
                     self?.close()

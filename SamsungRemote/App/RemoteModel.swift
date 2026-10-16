@@ -247,6 +247,9 @@ final class RemoteModel {
 
     private func requestInstalledApps() {
         guard let client else { return }
+        #if DEBUG
+        print("[TV] enviando ed.installedApp.get")
+        #endif
         Task { try? await client.send(RemoteMessage.installedAppsRequest()) }
     }
 
