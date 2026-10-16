@@ -34,3 +34,15 @@ Specs em [`docs/specs/`](docs/specs/), protocolo da TV em [`docs/protocol/`](doc
 scripts/dev.sh test                  # testes unitários
 scripts/dev.sh tv-info 192.168.0.50  # diagnóstico da TV
 ```
+
+## Build para distribuir (.dmg)
+
+```bash
+make dmg   # compila em Release e empacota build/SamsungRemote.dmg
+```
+
+Assinatura ad-hoc (ADR 0001, sem conta de desenvolvedor paga): ao abrir o `.dmg` baixado em
+outro Mac, o Gatekeeper bloqueia na primeira vez — clique com o botão direito no app › Abrir.
+
+O GitHub Actions (`.github/workflows/build.yml`) builda, testa e gera esse `.dmg` a cada push
+em `main` e em PRs; baixe o artefato `SamsungRemote-dmg` na aba Actions do run correspondente.
