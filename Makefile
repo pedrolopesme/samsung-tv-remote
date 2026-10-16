@@ -1,10 +1,11 @@
-.PHONY: help build test run open clean kill-stuck tv-info wake
+.PHONY: help build test run open clean kill-stuck release dmg tv-info wake
 
 # Configuration
 PROJECT := SamsungRemote.xcodeproj
 SCHEME := SamsungRemote
 DERIVED := build/DerivedData
-APP := $(DERIVED)/Build/Products/Debug/SamsungRemote.app
+CONFIGURATION ?= Debug
+APP := $(DERIVED)/Build/Products/$(CONFIGURATION)/SamsungRemote.app
 PLATFORM := macOS
 ARCH := arm64
 
@@ -25,6 +26,8 @@ help:
 	@echo "  build              Compile the app (Debug)"
 	@echo "  test               Run unit tests"
 	@echo "  run                Build and launch the app"
+	@echo "  release            Build Release configuration"
+	@echo "  dmg                Build Release and package as .dmg"
 	@echo "  open               Open project in Xcode"
 	@echo "  clean              Remove build artifacts"
 	@echo "  kill-stuck         Kill a stuck SWBBuildService (runs before build/test)"
@@ -36,6 +39,7 @@ help:
 	@echo "  make build"
 	@echo "  make run"
 	@echo "  make test"
+	@echo "  make dmg"
 	@echo "  make tv-info IP=192.168.0.50"
 	@echo "  make wake MAC=AA:BB:CC:DD:EE:FF"
 
@@ -47,22 +51,41 @@ kill-stuck:
 	@pkill -9 -f SWBBuildService >/dev/null 2>&1 && echo "$(CYAN)Killed stuck SWBBuildService$(RESET)" || true
 
 build: kill-stuck
-	@echo "$(CYAN)Building SamsungRemote ($(ARCH))...$(RESET)"
+	@echo "$(CYAN)Building SamsungRemote ($(ARCH), $(CONFIGURATION))...$(RESET)"
 	xcodebuild \
 		-project $(PROJECT) \
 		-scheme $(SCHEME) \
 		-destination '$(DESTINATION)' \
 		-derivedDataPath $(DERIVED) \
+		-configuration $(CONFIGURATION) \
 		build < /dev/null
 
 test: kill-stuck
-	@echo "$(CYAN)Running tests ($(ARCH))...$(RESET)"
+	@echo "$(CYAN)Running tests ($(ARCH), $(CONFIGURATION))...$(RESET)"
 	xcodebuild \
 		-project $(PROJECT) \
 		-scheme $(SCHEME) \
 		-destination '$(DESTINATION)' \
 		-derivedDataPath $(DERIVED) \
+		-configuration $(CONFIGURATION) \
 		test < /dev/null
+
+release:
+	@$(MAKE) build CONFIGURATION=Release
+
+# Packages the Release .app into a distributable .dmg with a drag-to-Applications
+# shortcut. Ad-hoc signed (ADR 0001, no paid developer account) — first launch on
+# another Mac needs right-click > Open (Gatekeeper, unidentified developer).
+dmg: release
+	@echo "$(CYAN)Packaging .dmg...$(RESET)"
+	rm -rf build/dmg-staging
+	mkdir -p build/dmg-staging
+	cp -R "$(DERIVED)/Build/Products/Release/SamsungRemote.app" build/dmg-staging/
+	ln -s /Applications build/dmg-staging/Applications
+	rm -f build/SamsungRemote.dmg
+	hdiutil create -volname "Samsung Remote" -srcfolder build/dmg-staging -ov -format UDZO build/SamsungRemote.dmg
+	rm -rf build/dmg-staging
+	@echo "$(CYAN)build/SamsungRemote.dmg$(RESET)"
 
 run: build
 	@echo "$(CYAN)Launching SamsungRemote...$(RESET)"

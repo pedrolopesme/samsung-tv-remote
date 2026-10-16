@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.2"
+
+      - name: Build (Debug)
+        run: make build
+
+      - name: Test
+        run: make test
+
+      - name: Build Release + package .dmg
+        run: make dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SamsungRemote-dmg
+          path: build/SamsungRemote.dmg
