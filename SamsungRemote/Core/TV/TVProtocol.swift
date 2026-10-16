@@ -35,6 +35,19 @@ enum TVEndpoint {
         return components.url
     }
 
+    /// `http://<host>:8001/api/v2/applications/<appId>` — `GET` consulta (200 instalado,
+    /// 404 não), `POST` lança. Validado na AU8000 real (ver `docs/specs/0002-atalhos-de-apps.md`),
+    /// ao contrário do canal `ed.*` do WebSocket, que essa geração de firmware não implementa.
+    static func applicationURL(host: String, appId: String) -> URL? {
+        guard isValidHost(host), !appId.isEmpty else { return nil }
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = host
+        components.port = restPort
+        components.path = "/api/v2/applications/\(appId)"
+        return components.url
+    }
+
     static func isValidHost(_ host: String) -> Bool {
         let trimmed = host.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed == host else { return false }
@@ -43,7 +56,7 @@ enum TVEndpoint {
     }
 }
 
-/// Mensagens enviadas pelo app à TV.
+/// Mensagens enviadas pelo app à TV pelo WebSocket.
 enum RemoteMessage {
     enum Action: String, Sendable {
         /// Pressiona e solta (um toque).
@@ -77,95 +90,6 @@ enum RemoteMessage {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         return String(decoding: try encoder.encode(payload), as: UTF8.self)
-    }
-}
-
-extension RemoteMessage {
-    struct EmitPayload: Encodable {
-        let method = "ms.channel.emit"
-        let params: EmitParams
-    }
-
-    struct EmitParams: Encodable {
-        let event: String
-        let to = "host"
-        let data: LaunchAppData?
-    }
-
-    struct LaunchAppData: Encodable {
-        let appId: String
-        let actionType = "DEEP_LINK"
-        let metaTag = ""
-
-        enum CodingKeys: String, CodingKey {
-            case appId
-            case actionType = "action_type"
-            case metaTag
-        }
-    }
-
-    /// `ed.installedApp.get` — pede a lista de apps instalados. Ver spec 0002.
-    static func installedAppsRequest() throws -> String {
-        try encodeEmit(event: "ed.installedApp.get", data: nil)
-    }
-
-    /// `ed.apps.launch` — abre um app pelo `appId` **real** desta TV (resolvido via
-    /// `ed.installedApp.get`, nunca um valor fixo). Ver spec 0002.
-    static func launchApp(appId: String) throws -> String {
-        try encodeEmit(event: "ed.apps.launch", data: LaunchAppData(appId: appId))
-    }
-
-    private static func encodeEmit(event: String, data: LaunchAppData?) throws -> String {
-        let payload = EmitPayload(params: EmitParams(event: event, data: data))
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        return String(decoding: try encoder.encode(payload), as: UTF8.self)
-    }
-}
-
-/// Um app instalado reportado pela TV. Ver spec 0002.
-struct InstalledApp: Decodable, Equatable, Sendable {
-    let appId: String
-    let name: String
-}
-
-/// Resposta de `ed.installedApp.get`. Tolerante: entradas sem `appId`/`name` são descartadas
-/// silenciosamente, nunca derrubam o parser inteiro. Formato confirmado em `samsungtvws` e
-/// `ha-samsungtv-tizen` (ver `docs/specs/0002-atalhos-de-apps.md`), ainda não validado nesta TV.
-struct InstalledAppsEvent: Decodable, Equatable, Sendable {
-    static let event = "ed.installedApp.get"
-
-    let apps: [InstalledApp]
-
-    private enum CodingKeys: String, CodingKey { case event, data }
-    private enum DataKeys: String, CodingKey { case data }
-    private struct PartialApp: Decodable {
-        let appId: String?
-        let name: String?
-    }
-
-    init(apps: [InstalledApp]) {
-        self.apps = apps
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let event = try container.decode(String.self, forKey: .event)
-        guard event == Self.event else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .event, in: container, debugDescription: "Evento inesperado: \(event)"
-            )
-        }
-        let dataContainer = try container.nestedContainer(keyedBy: DataKeys.self, forKey: .data)
-        let partials = try dataContainer.decode([PartialApp].self, forKey: .data)
-        apps = partials.compactMap { partial in
-            guard let appId = partial.appId, let name = partial.name else { return nil }
-            return InstalledApp(appId: appId, name: name)
-        }
-    }
-
-    static func parse(_ text: String) -> InstalledAppsEvent? {
-        try? JSONDecoder().decode(InstalledAppsEvent.self, from: Data(text.utf8))
     }
 }
 

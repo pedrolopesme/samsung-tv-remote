@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Accepted (REST validado na AU8000 real; UI e persistência de favoritos ainda não testadas ponta a ponta) |
 | **Autor** | Pedro |
 | **Criada** | 2026-10-15 |
 | **Depende de** | 0001 |
@@ -10,16 +10,29 @@
 ## Contexto
 
 Hoje, para abrir Netflix/YouTube/Prime Video/globoplay o usuário precisa apertar Início e navegar na
-TV com o D-pad — o mesmo atrito que o app inteiro existe para evitar. A TV já expõe, pelo WebSocket,
-a lista de apps instalados e um comando de abertura (`docs/protocol/samsung-tizen-remote.md` §5).
-Faltam só a UI e o fiação de protocolo.
+TV com o D-pad — o mesmo atrito que o app inteiro existe para evitar.
+
+**Mudança de rota em relação à primeira versão desta spec:** a ideia original era usar o canal
+WebSocket (`ed.installedApp.get`/`ed.apps.launch`, documentado em `docs/protocol/samsung-tizen-remote.md`
+§5 e usado por `samsungtvws`/Home Assistant). Testado ao vivo na AU8000 (TV 2021), **nenhum dos
+dois funciona**:
+
+- `ed.installedApp.get` é aceito pelo transporte (`ms.channel.emit` é um método válido) e **ignorado
+  em silêncio** — nenhum handler escuta esse evento nessa geração de firmware.
+- `ms.application.get` (método de topo, alternativa cogitada) retorna
+  `{"event":"ms.error","data":{"message":"unrecognized method value : ms.application.get"}}`.
+- `ed.apps.launch` (WebSocket) não abriu nada na TV.
+
+Em compensação, a **REST** (`GET`/`POST http://<host>:8001/api/v2/applications/<appId>`) funciona
+perfeitamente — testado ao vivo, ver "Protocolo / dados". O protocolo doc marcava essa rota com
+⚠️ "alguns firmwares 2021+ retornam 404"; não é o caso da AU8000.
 
 ## Objetivos
 
 1. Mostrar uma linha de ícones de apps **favoritos** entre o cabeçalho e o D-pad.
-2. Ao conectar, consultar a TV (`ed.installedApp.get`) para descobrir quais dos apps conhecidos
-   (abaixo) estão instalados e qual `appId` real a TV usa para cada um.
-3. Toque no ícone abre o app na TV (`ed.apps.launch`) usando esse `appId` real — sem navegação manual.
+2. Ao conectar, descobrir via REST quais dos apps conhecidos (abaixo) a TV reconhece, testando os
+   `appId` candidatos de cada um.
+3. Toque no ícone abre o app na TV (`POST` REST) usando o `appId` confirmado — sem navegação manual.
 4. Deixar o usuário escolher, nas Preferências, quais desses apps viram favoritos.
 
 ## Apps conhecidos (bundlados no app)
@@ -27,46 +40,45 @@ Faltam só a UI e o fiação de protocolo.
 Só estes quatro entram no v1 — mais apps é escopo de uma spec futura (basta bundlar um novo ícone
 e uma nova chave, o mecanismo de baixo generaliza).
 
-| Chave | Nome exibido | Ícone | `appId` de referência (comunidade — **não usado em runtime**, ver "Protocolo / dados") |
-|---|---|---|---|
-| `netflix` | Netflix | `docs/specs/assets/0002-icons/netflix.png` | `11101200001` / `3201907018807` |
-| `youtube` | YouTube | `docs/specs/assets/0002-icons/youtube.png` | `111299001912` |
-| `prime-video` | Prime Video | `docs/specs/assets/0002-icons/prime-video.png` | `3201512006785` / `3201910019365` |
-| `globoplay` | globoplay | `docs/specs/assets/0002-icons/globoplay.png` | `3201908019022` |
+| Chave | Nome exibido | Ícone | `appId` candidatos (ordem de prioridade) | Confirmado na AU8000 |
+|---|---|---|---|---|
+| `netflix` | Netflix | `docs/specs/assets/0002-icons/netflix.png` | `3201907018807`, `11101200001` | ✅ 200, `running:true` |
+| `youtube` | YouTube | `docs/specs/assets/0002-icons/youtube.png` | `111299001912` | ✅ 200, `running:true` |
+| `prime-video` | Prime Video | `docs/specs/assets/0002-icons/prime-video.png` | `3201910019365`, `3201512006785` | ✅ 200, `running:false` |
+| `globoplay` | globoplay | `docs/specs/assets/0002-icons/globoplay.png` | `3201908019022` | ❌ 404 (ID errado ou não instalado nesta TV) |
 
-Os `appId` de referência vêm de `xchwarze/samsung-tv-ws-api/APPLICATIONS.md` (comunidade, não
-garantidos) — servem só de contexto de onde esses apps existem no catálogo Samsung. **O app nunca
-usa esses valores para lançar um app**; ver próxima seção.
+IDs candidatos vêm de `xchwarze/samsung-tv-ws-api/APPLICATIONS.md` (comunidade, não garantidos —
+"IDs can change over time and can differ by TV year / Tizen version"). Por isso cada app pode ter
+mais de um candidato: o primeiro que a TV confirmar (`GET` 200) vira o `appId` usado.
 
 ## Fora do escopo
 
 - Grade/galeria completa de todos os apps instalados (só a linha de favoritos, só os 4 conhecidos).
 - Apps além dos 4 listados acima.
-- Abrir apps via REST (`POST /api/v2/applications/<appId>`) — a doc do protocolo já marca que
-  firmwares 2021+ podem responder 404 nesse endpoint; usar só o WebSocket (`ed.apps.launch`).
+- O canal WebSocket `ed.*` para descoberta/lançamento — confirmado morto nesta geração de firmware
+  (ver "Contexto"). Mantido documentado em `docs/protocol/samsung-tizen-remote.md` para TVs mais
+  antigas (K+ 2016–2017, ⚠️ não testado), mas esta spec não depende dele.
 - Detecção automática de "mais usados" — a escolha é manual.
 - Instalar/desinstalar/atualizar apps.
-- Lista de `appId` candidatos com tentativa múltipla — **não existe**: a TV sempre informa o `appId`
-  real pelo próprio `ed.installedApp.get`, então não há ambiguidade de qual ID usar (ver abaixo).
 
 ## Experiência
 
 ### Linha de favoritos
 
 - Nova linha no `RemoteView`, entre o cabeçalho e o D-pad (mesmo estilo de `KeyButton`).
-- Até 4 ícones: um por chave conhecida que esteja **marcada como favorita** *e* **presente na
-  última resposta** de `ed.installedApp.get`.
-- Populada só depois que `ed.installedApp.get` responder; se não responder em ~2 s ou a TV não
-  suportar o evento, a linha fica **oculta** — nunca bloqueia o resto do controle.
-- Toque em um ícone → `ed.apps.launch` com o `appId` **que a TV retornou** para aquela chave. Sem
-  spinner: mesmo padrão "fire-and-forget" das teclas normais.
+- Até 4 ícones: um por chave conhecida que esteja **marcada como favorita** *e* **confirmada via
+  REST** na conexão atual.
+- Populada de forma assíncrona depois de conectar; se a TV não confirmar nenhum app (REST falhar
+  ou todos os candidatos derem 404), a linha fica **oculta** — nunca bloqueia o resto do controle.
+- Toque em um ícone → `POST` REST com o `appId` confirmado para aquela chave. Sem spinner: mesmo
+  padrão "fire-and-forget" das teclas normais.
 
 ### Preferências (⌘,) — nova seção "Apps"
 
-- Lista só as chaves conhecidas que a última consulta confirmou instaladas, cada uma com um toggle
+- Lista só as chaves conhecidas que a última consulta confirmou (REST 200), cada uma com um toggle
   "Favorito".
 - Favoritos persistidos localmente por **chave** (`netflix`, não o `appId` cru — ele pode mudar
-  entre firmwares, a chave não), ordenados pela ordem em que o usuário marcou.
+  entre firmwares/anos, a chave não), ordenados pela ordem em que o usuário marcou.
 - Se a consulta nunca respondeu (TV nunca conectou ainda): "Abra o controle conectado à TV para ver
   os apps disponíveis."
 - Se respondeu mas nenhum dos 4 apps conhecidos foi encontrado: "Nenhum dos apps compatíveis foi
@@ -74,83 +86,66 @@ usa esses valores para lançar um app**; ver próxima seção.
 
 ## Protocolo / dados
 
-Referência: `docs/protocol/samsung-tizen-remote.md` §5. Formato de resposta confirmado em duas
-implementações independentes da comunidade (`xchwarze/samsung-tv-ws-api/samsungtvws/event.py` e
-`jaruba/ha-samsungtv-tizen/custom_components/samsungtv_tizen/media_player.py`) — não é mais
-"inferido", mas também nunca foi capturado nesta TV específica (ver "Questões em aberto").
+**Validado ao vivo na AU8000** (`192.168.68.109`, 2026-10-15):
 
-```json
-{"method":"ms.channel.emit","params":{"event":"ed.installedApp.get","to":"host"}}
 ```
-Resposta:
-```json
-{"event":"ed.installedApp.get","data":{"data":[{"appId":"...","name":"Netflix"}, ...]}}
+GET  http://<host>:8001/api/v2/applications/<appId>
+→ 200 {"id":"3201907018807","name":"Netflix","running":true,"version":"70.23.15090","visible":false}
+→ 404 {"code":404,"message":"Not found error.","status":404}   (appId inexistente nesta TV)
+
+POST http://<host>:8001/api/v2/applications/<appId>
+→ 200 true   (lança o app — confirmado abrindo a Netflix de verdade)
 ```
 
-**Resolução do `appId` (sem ambiguidade, sem tentativa múltipla):** para cada entrada da resposta,
-normaliza `name` (lowercase + trim) e compara contra as 4 chaves conhecidas (também normalizadas:
-`netflix`, `youtube`, `prime video`, `globoplay`). Quando bate, guarda em memória `chave → appId`
-usando **o `appId` exato que a TV mandou** — nunca os valores de referência da tabela acima.
+**Resolução do `appId` (por app, sem ambiguidade de lançamento):** para cada `KnownApp`, testa seus
+`candidateAppIds` em ordem via `GET` até um responder 200; esse é o `appId` resolvido para aquela
+TV. Testar é **sem efeito colateral** (`GET` não lança nada), diferente da ideia descartada no grill
+desta spec de "disparar `ed.apps.launch` pra todos os candidatos às cegas".
 
-```json
-{"method":"ms.channel.emit","params":{"event":"ed.apps.launch","to":"host",
-  "data":{"appId":"<appId resolvido acima>","action_type":"DEEP_LINK","metaTag":""}}}
-```
-`action_type: "DEEP_LINK"` e `metaTag: ""` são os defaults usados por `samsungtvws`
-(`ChannelEmitCommand.launch_app`) — o mesmo código-fonte comenta que alguns apps podem precisar
-`NATIVE_LAUNCH`; risco aceito para v1, ver "Questões em aberto".
-
-- `TVProtocol.swift` hoje só monta `ms.remote.control` (teclas). Precisa de um novo tipo
-  `Encodable` para mensagens `ms.channel.emit` (ex.: `RemoteMessage.installedAppsRequest()`,
-  `RemoteMessage.launchApp(appId:)`), seguindo o mesmo padrão de `sortedKeys`.
-- Precisa de um novo tipo `Decodable` tolerante para a resposta de `ed.installedApp.get`: decodifica
-  entradas com `appId` + `name` presentes, **descarta silenciosamente** entradas sem os dois (nunca
-  lança erro por causa de uma entrada estranha no meio da lista).
-- Persistência: lista (ordenada) de **chaves** favoritas em `UserDefaults`
-  (`tv.apps.favorites.v1`), mesmo padrão de `ConfigurationStore`. O mapa `chave → appId` resolvido
-  fica só em memória, re-consultado a cada conexão (o `appId` pode mudar entre firmwares — não faz
-  sentido persistir um valor que pode ficar obsoleto).
+- `TVEndpoint.applicationURL(host:appId:)` monta a URL; `TVApplicationClient.isAvailable`/`.launch`
+  fazem o `GET`/`POST`. Mesmo padrão de `TVInfoClient` (REST simples via `URLSession.shared`).
+- Resolução roda em paralelo para os 4 apps (`withTaskGroup`), sem bloquear o resto do controle
+  (FR-1/FR-6).
+- Persistência: lista (ordenada) de **chaves** favoritas em `UserDefaults` (`tv.apps.favorites.v1`),
+  mesmo padrão de `ConfigurationStore`. O mapa `chave → appId` resolvido fica só em memória,
+  re-consultado a cada conexão (o `appId` pode mudar entre firmwares).
 
 ## Requisitos funcionais
 
 | ID | Requisito |
 |---|---|
-| FR-1 | Ao conectar com sucesso, enviar `ed.installedApp.get`; aguardar resposta por até ~2 s. |
-| FR-2 | Da resposta, extrair entradas com `appId`+`name`; normalizar `name` (lowercase+trim) e casar contra as 4 chaves conhecidas; guardar em memória o `appId` real de cada chave reconhecida. |
-| FR-3 | Preferências → seção "Apps": toggle de favorito só para as chaves reconhecidas na última consulta; favoritos persistidos (ordenados) no UserDefaults por chave. |
-| FR-4 | Mostrar linha de até 4 ícones de favoritos (chave bundlada, marcada como favorita e reconhecida na última consulta) entre o cabeçalho e o D-pad; ocultar a linha se não houver nenhum favorito reconhecido ou se a consulta não responder a tempo. |
-| FR-5 | Toque num ícone envia `ed.apps.launch` com o `appId` resolvido (FR-2) daquela chave, `action_type: DEEP_LINK`, `metaTag: ""`. |
-| FR-6 | Falha, timeout ou ausência do evento `ed.installedApp.get` não bloqueia nem atrasa o resto do controle — a linha de apps simplesmente não aparece. |
+| FR-1 | Ao conectar com sucesso, testar via `GET` REST os `candidateAppIds` de cada app conhecido, em paralelo. |
+| FR-2 | Guardar em memória o primeiro `appId` candidato que responder 200 (REST) para cada app conhecido. |
+| FR-3 | Preferências → seção "Apps": toggle de favorito só para as chaves confirmadas na última consulta; favoritos persistidos (ordenados) no UserDefaults por chave. |
+| FR-4 | Mostrar linha de até 4 ícones de favoritos (chave bundlada, marcada como favorita e confirmada na última consulta) entre o cabeçalho e o D-pad; ocultar a linha se não houver nenhum favorito confirmado. |
+| FR-5 | Toque num ícone envia `POST` REST com o `appId` resolvido (FR-2) daquela chave. |
+| FR-6 | Falha de rede ou nenhum app confirmado não bloqueia nem atrasa o resto do controle — a linha de apps simplesmente não aparece. |
 
 ## Critérios de aceite
 
-- [ ] Automatizado: decodificação de uma fixture (baseada no formato confirmado em
-      `samsungtvws`/`ha-samsungtv-tizen`) com entradas reconhecidas, desconhecidas (ignoradas) e
-      malformadas (descartadas); normalização e match de nome com variação de case/espaço; encoding
-      de `ed.apps.launch`; ida e volta dos favoritos (por chave) no UserDefaults.
-- [ ] Manual na TV: os apps realmente instalados na AU8000 aparecem em Preferências com os nomes
-      certos; favoritos persistem entre reaberturas; toque abre o app certo; confirmar se os 4
-      abrem com `DEEP_LINK` ou se algum precisa `NATIVE_LAUNCH`; linha some quando nenhum favorito
-      está marcado.
+- [x] Automatizado: `TVEndpoint.applicationURL` gera a URL correta; rejeita host/appId inválido;
+      todo `KnownApp` tem ao menos um candidato; round-trip dos favoritos (por chave) no UserDefaults.
+- [x] REST validado na TV real: `GET`/`POST` confirmados funcionando (Netflix abriu de verdade).
+- [ ] Manual na TV, ponta a ponta pela UI do app: favoritar na seção "Apps", confirmar que a linha
+      de ícones aparece no controle, tocar e confirmar que abre o app certo.
 
 ## Plano de testes
 
-**Automatizado** (`SamsungRemoteTests/`): fixture inventada mas grounded no formato confirmado pelas
-duas libs de referência — cobrindo entrada reconhecida, entrada desconhecida, variação de
-case/espaço no nome, entrada sem `appId` ou sem `name`; encode de `ed.apps.launch`; round-trip dos
-favoritos por chave.
+**Automatizado** (`SamsungRemoteTests/AppShortcutsTests.swift`): construção de URL REST, validação
+de `KnownApp.all`, round-trip de favoritos. Chamadas de rede reais (`TVApplicationClient`) não são
+testadas em automatizado — mesma convenção de `TVInfoClient`, que também não tem teste unitário de
+rede, só de construção de URL.
 
-**Manual na TV** (`docs/tv/UN65AU8000GXZD.md`): capturar o payload real de `ed.installedApp.get` na
-AU8000 (isso pode exigir ajuste no parser se o formato real divergir do grounded acima); confirmar
-nomes exatos retornados para os 4 apps; confirmar `DEEP_LINK` vs `NATIVE_LAUNCH` por app; confirmar
-visualmente se os 4 ícones cabem nos 288 pt de largura sem espremer o D-pad.
+**Manual na TV** (`docs/tv/UN65AU8000GXZD.md`): já confirmado por fora da UI (`curl` direto) que
+`GET`/`POST` funcionam para Netflix/YouTube/Prime Video. Falta: favoritar pela UI do app e confirmar
+visualmente que a linha aparece e lança o app certo; verificar se mais candidatos de `appId` são
+necessários para globoplay (404 com o único ID conhecido).
 
 ## Questões em aberto
 
-- ⚠️ `ed.apps.launch` funciona de fato na AU8000, ou tem a mesma limitação que a doc do protocolo
-  marca pro endpoint REST equivalente? Só a TV física confirma.
-- ⚠️ Os 4 apps abrem todos com `action_type: DEEP_LINK`, ou algum precisa `NATIVE_LAUNCH`? O
-  código-fonte de referência sugere que isso varia por app.
-- Os nomes exatos que a AU8000 retorna para cada um dos 4 apps batem com o que normalizamos
-  (`netflix`, `youtube`, `prime video`, `globoplay`)? Só validável na TV real — se não bater, o
-  favorito correspondente simplesmente não aparece (falha silenciosa, consistente com FR-6).
+- `globoplay` deu 404 com o único `appId` da lista comunitária (`3201908019022`) na AU8000 de teste
+  — pode ser ID desatualizado ou o app genuinamente não estar instalado nessa TV específica. Precisa
+  de mais um `appId` candidato (se alguém achar um atualizado) ou aceitar que esse favorito nunca
+  aparece nessa TV (comportamento já é "falha silenciosa" por design, FR-6).
+- Quantos dos 4 ícones cabem lado a lado nos 288 pt de largura sem espremer o D-pad visualmente —
+  ainda não confirmado por captura de tela (ambiente de desenvolvimento tem limitação para isso).

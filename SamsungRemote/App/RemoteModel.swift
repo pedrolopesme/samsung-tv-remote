@@ -30,11 +30,11 @@ final class RemoteModel {
     private var client: TVWebSocketClient?
     private var connectTask: Task<Void, Never>?
 
-    /// Apps conhecidos resolvidos contra a última resposta de `ed.installedApp.get` desta conexão.
+    /// Apps conhecidos resolvidos via REST (`TVApplicationClient.isAvailable`) contra esta TV.
     private(set) var resolvedApps: [ResolvedApp] = []
     /// Chaves de `KnownApp` marcadas como favoritas, na ordem em que foram marcadas.
     private(set) var favoriteKeys: [String]
-    /// `true` assim que uma resposta de `ed.installedApp.get` foi processada (mesmo que vazia).
+    /// `true` assim que a resolução REST terminou (mesmo que nenhum app conhecido exista nesta TV).
     private(set) var appsQueried = false
 
     init(
@@ -154,12 +154,6 @@ final class RemoteModel {
                 self.handleDisconnect(of: client)
             }
         }
-        client.onMessage = { [weak self] text in
-            guard let event = InstalledAppsEvent.parse(text) else { return }
-            Task { @MainActor in
-                self?.applyInstalledApps(event.apps)
-            }
-        }
         let approvalHint = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(1200))
             guard !Task.isCancelled, let self, self.status == .connecting else { return }
@@ -175,10 +169,7 @@ final class RemoteModel {
             }
             self.client = client
             status = .connected
-            requestInstalledApps()
-            #if DEBUG
-            probeLaunchNetflix()
-            #endif
+            resolveKnownApps()
         } catch {
             client.disconnect()
             status = .disconnected
@@ -223,7 +214,7 @@ final class RemoteModel {
 
     // MARK: - Apps
 
-    /// Apps favoritos presentes na última consulta à TV, na ordem em que foram marcados.
+    /// Apps favoritos presentes na TV conectada, na ordem em que foram marcados.
     /// Vazio = linha de atalhos oculta (`RemoteView`), consistente com FR-4/FR-6 da spec 0002.
     var favoriteApps: [ResolvedApp] {
         let resolvedByKey = Dictionary(uniqueKeysWithValues: resolvedApps.map { ($0.id, $0) })
@@ -240,42 +231,39 @@ final class RemoteModel {
         appFavorites.save(favoriteKeys)
     }
 
-    /// Dispara o app pelo `appId` resolvido em `applyInstalledApps`. Fire-and-forget: a TV não
-    /// confirma sucesso (FR-5/FR-6 da spec 0002).
+    /// Lança o app via `POST /api/v2/applications/<appId>` (REST — o WebSocket `ed.apps.launch`
+    /// não existe nesta geração de firmware, ver `TVApplicationClient`). Fire-and-forget: a TV
+    /// não garante confirmação útil além do status HTTP (FR-5/FR-6 da spec 0002).
     func launchApp(_ resolved: ResolvedApp) {
+        guard let host = configuration?.host else { return }
+        Task { await TVApplicationClient.launch(host: host, appId: resolved.appId) }
+    }
+
+    /// Testa, em paralelo, os `appId` candidatos de cada `KnownApp` via `GET` REST; o primeiro
+    /// que responder 200 vira o `appId` resolvido para essa TV. Nunca bloqueia nem atrasa o
+    /// resto do controle (FR-1/FR-6) — roda numa task à parte.
+    private func resolveKnownApps() {
+        guard let host = configuration?.host else { return }
         Task { [weak self] in
-            try? await self?.client?.send(RemoteMessage.launchApp(appId: resolved.appId))
-        }
-    }
-
-    private func requestInstalledApps() {
-        guard let client else { return }
-        #if DEBUG
-        print("[TV] enviando ed.installedApp.get")
-        #endif
-        Task { try? await client.send(RemoteMessage.installedAppsRequest()) }
-    }
-
-    #if DEBUG
-    /// Teste direto e temporário: `ed.apps.launch` funciona com o `appId` de referência,
-    /// sem confirmar instalação antes (já que `ed.installedApp.get`/`ms.application.get`
-    /// não existem nesta geração de firmware — ver PR)? Abre Netflix de verdade se funcionar.
-    /// Remover depois de confirmar.
-    private func probeLaunchNetflix() {
-        guard let client else { return }
-        let appId = "3201907018807"
-        Task {
-            print("[TV] testando ed.apps.launch direto (Netflix, appId \(appId))")
-            try? await client.send(RemoteMessage.launchApp(appId: appId))
-        }
-    }
-    #endif
-
-    private func applyInstalledApps(_ apps: [InstalledApp]) {
-        appsQueried = true
-        resolvedApps = KnownApp.all.compactMap { known in
-            apps.first { KnownApp.normalize($0.name) == known.matchName }
-                .map { ResolvedApp(app: known, appId: $0.appId) }
+            var resolved: [ResolvedApp] = []
+            await withTaskGroup(of: ResolvedApp?.self) { group in
+                for known in KnownApp.all {
+                    group.addTask {
+                        for candidate in known.candidateAppIds {
+                            if await TVApplicationClient.isAvailable(host: host, appId: candidate) {
+                                return ResolvedApp(app: known, appId: candidate)
+                            }
+                        }
+                        return nil
+                    }
+                }
+                for await result in group {
+                    if let result { resolved.append(result) }
+                }
+            }
+            guard let self else { return }
+            self.resolvedApps = KnownApp.all.compactMap { known in resolved.first { $0.app.key == known.key } }
+            self.appsQueried = true
         }
     }
 

@@ -29,9 +29,6 @@ enum TVConnectionError: LocalizedError, Equatable {
 final class TVWebSocketClient: NSObject, URLSessionDelegate, @unchecked Sendable {
     let host: String
     var onDisconnect: (@Sendable () -> Void)?
-    /// Mensagens recebidas depois do handshake (ex.: resposta de `ed.installedApp.get`).
-    /// Ver spec 0002.
-    var onMessage: (@Sendable (String) -> Void)?
 
     private lazy var session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
     private var task: URLSessionWebSocketTask?
@@ -99,22 +96,7 @@ final class TVWebSocketClient: NSObject, URLSessionDelegate, @unchecked Sendable
         receiveLoop = Task { [weak self] in
             while !Task.isCancelled {
                 do {
-                    let message = try await task.receive()
-                    switch message {
-                    case .string(let text):
-                        #if DEBUG
-                        print("[TV] recebido: \(text)")
-                        #endif
-                        self?.onMessage?(text)
-                    case .data(let data):
-                        #if DEBUG
-                        print("[TV] recebido (binário, \(data.count) bytes, ignorado)")
-                        #endif
-                    @unknown default:
-                        #if DEBUG
-                        print("[TV] recebido (tipo desconhecido, ignorado)")
-                        #endif
-                    }
+                    _ = try await task.receive()
                 } catch {
                     self?.close()
                     return
