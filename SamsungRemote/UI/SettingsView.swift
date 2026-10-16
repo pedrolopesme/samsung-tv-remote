@@ -28,6 +28,23 @@ struct SettingsView: View {
                         Button("Esquecer TV", role: .destructive) { model.forgetTV() }
                     }
                 }
+
+                Section("Apps") {
+                    if !model.appsQueried {
+                        Text("Abra o controle conectado à TV para ver os apps disponíveis.")
+                            .foregroundStyle(.secondary)
+                    } else if model.resolvedApps.isEmpty {
+                        Text("Nenhum dos apps compatíveis foi encontrado nesta TV.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(model.resolvedApps) { resolved in
+                            Toggle(resolved.app.displayName, isOn: Binding(
+                                get: { model.favoriteKeys.contains(resolved.id) },
+                                set: { model.setFavorite(resolved.id, isFavorite: $0) }
+                            ))
+                        }
+                    }
+                }
             } else {
                 Section {
                     Text("Nenhuma TV configurada. Abra o controle no menu bar para conectar.")

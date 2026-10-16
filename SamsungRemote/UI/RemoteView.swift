@@ -9,6 +9,7 @@ struct RemoteView: View {
     var body: some View {
         VStack(spacing: 18) {
             HeaderView()
+            AppShortcutsRow()
 
             HStack(spacing: 14) {
                 KeyButton(.source, systemImage: "rectangle.on.rectangle")
@@ -222,5 +223,46 @@ enum KeyboardShortcuts {
         case "9": return .digit9
         default: return nil
         }
+    }
+}
+
+/// Linha de atalhos de apps favoritos, entre o cabeçalho e o D-pad. Some se não houver
+/// favorito reconhecido na TV conectada. Ver `docs/specs/0002-atalhos-de-apps.md` (FR-4/FR-6).
+private struct AppShortcutsRow: View {
+    @Environment(RemoteModel.self) var model
+
+    var body: some View {
+        if !model.favoriteApps.isEmpty {
+            HStack(spacing: 14) {
+                ForEach(model.favoriteApps) { resolved in
+                    AppShortcutButton(resolved: resolved)
+                }
+            }
+            .frame(height: 40)
+            .padding(.horizontal, 30)
+        }
+    }
+}
+
+/// Toque abre o app na TV (`ed.apps.launch`). Mesmo estilo de `KeyButton`, com o logo do app
+/// no lugar do SF Symbol.
+private struct AppShortcutButton: View {
+    let resolved: ResolvedApp
+    @Environment(RemoteModel.self) var model
+
+    var body: some View {
+        Button {
+            Haptics.tap()
+            model.launchApp(resolved)
+        } label: {
+            Image(resolved.app.assetName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22, height: 22)
+                .clipShape(Circle())
+        }
+        .buttonStyle(KeyCapStyle(tint: Theme.key, shape: .circle))
+        .help(resolved.app.displayName)
+        .accessibilityLabel(resolved.app.displayName)
     }
 }

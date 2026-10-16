@@ -26,12 +26,26 @@ final class RemoteModel {
 
     private let store: ConfigurationStore
     private let tokens: any TokenStore
+    private let appFavorites: AppFavoritesStore
     private var client: TVWebSocketClient?
     private var connectTask: Task<Void, Never>?
 
-    init(store: ConfigurationStore = ConfigurationStore(), tokens: any TokenStore = KeychainTokenStore()) {
+    /// Apps conhecidos resolvidos contra a última resposta de `ed.installedApp.get` desta conexão.
+    private(set) var resolvedApps: [ResolvedApp] = []
+    /// Chaves de `KnownApp` marcadas como favoritas, na ordem em que foram marcadas.
+    private(set) var favoriteKeys: [String]
+    /// `true` assim que uma resposta de `ed.installedApp.get` foi processada (mesmo que vazia).
+    private(set) var appsQueried = false
+
+    init(
+        store: ConfigurationStore = ConfigurationStore(),
+        tokens: any TokenStore = KeychainTokenStore(),
+        appFavorites: AppFavoritesStore = AppFavoritesStore()
+    ) {
         self.store = store
         self.tokens = tokens
+        self.appFavorites = appFavorites
+        self.favoriteKeys = appFavorites.load()
         let saved = store.load()
         self.configuration = saved
         self.status = saved == nil ? .notConfigured : .disconnected
@@ -140,6 +154,12 @@ final class RemoteModel {
                 self.handleDisconnect(of: client)
             }
         }
+        client.onMessage = { [weak self] text in
+            guard let event = InstalledAppsEvent.parse(text) else { return }
+            Task { @MainActor in
+                self?.applyInstalledApps(event.apps)
+            }
+        }
         let approvalHint = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(1200))
             guard !Task.isCancelled, let self, self.status == .connecting else { return }
@@ -155,6 +175,7 @@ final class RemoteModel {
             }
             self.client = client
             status = .connected
+            requestInstalledApps()
         } catch {
             client.disconnect()
             status = .disconnected
@@ -165,12 +186,16 @@ final class RemoteModel {
     private func handleDisconnect(of client: TVWebSocketClient) {
         guard self.client === client else { return }
         self.client = nil
+        resolvedApps = []
+        appsQueried = false
         if status == .connected { status = .disconnected }
     }
 
     private func dropConnection() {
         client?.disconnect()
         client = nil
+        resolvedApps = []
+        appsQueried = false
         if configuration != nil { status = .disconnected }
     }
 
@@ -190,6 +215,46 @@ final class RemoteModel {
             handleDisconnect(of: client)
             await connect()
             try? await self.client?.send(RemoteMessage.key(key))
+        }
+    }
+
+    // MARK: - Apps
+
+    /// Apps favoritos presentes na última consulta à TV, na ordem em que foram marcados.
+    /// Vazio = linha de atalhos oculta (`RemoteView`), consistente com FR-4/FR-6 da spec 0002.
+    var favoriteApps: [ResolvedApp] {
+        let resolvedByKey = Dictionary(uniqueKeysWithValues: resolvedApps.map { ($0.id, $0) })
+        return favoriteKeys.compactMap { resolvedByKey[$0] }
+    }
+
+    func setFavorite(_ key: String, isFavorite: Bool) {
+        if isFavorite {
+            guard !favoriteKeys.contains(key) else { return }
+            favoriteKeys.append(key)
+        } else {
+            favoriteKeys.removeAll { $0 == key }
+        }
+        appFavorites.save(favoriteKeys)
+    }
+
+    /// Dispara o app pelo `appId` resolvido em `applyInstalledApps`. Fire-and-forget: a TV não
+    /// confirma sucesso (FR-5/FR-6 da spec 0002).
+    func launchApp(_ resolved: ResolvedApp) {
+        Task { [weak self] in
+            try? await self?.client?.send(RemoteMessage.launchApp(appId: resolved.appId))
+        }
+    }
+
+    private func requestInstalledApps() {
+        guard let client else { return }
+        Task { try? await client.send(RemoteMessage.installedAppsRequest()) }
+    }
+
+    private func applyInstalledApps(_ apps: [InstalledApp]) {
+        appsQueried = true
+        resolvedApps = KnownApp.all.compactMap { known in
+            apps.first { KnownApp.normalize($0.name) == known.matchName }
+                .map { ResolvedApp(app: known, appId: $0.appId) }
         }
     }
 
