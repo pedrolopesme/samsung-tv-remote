@@ -9,7 +9,6 @@ struct RemoteView: View {
     var body: some View {
         VStack(spacing: 18) {
             HeaderView()
-            AppShortcutsRow()
 
             HStack(spacing: 14) {
                 KeyButton(.source, systemImage: "rectangle.on.rectangle")
@@ -49,6 +48,8 @@ struct RemoteView: View {
                 KeyButton(.fastForward, systemImage: "forward.fill", shape: .rounded)
             }
             .frame(height: 36)
+
+            AppShortcutsRow()
 
             FooterView()
         }
@@ -226,8 +227,9 @@ enum KeyboardShortcuts {
     }
 }
 
-/// Linha de atalhos de apps favoritos, entre o cabeçalho e o D-pad. Some se não houver
-/// favorito reconhecido na TV conectada. Ver `docs/specs/0002-atalhos-de-apps.md` (FR-4/FR-6).
+/// Linha de atalhos de apps favoritos, no rodapé do controle, acima de Preferências/Sair.
+/// Some se não houver favorito reconhecido na TV conectada. Ver `docs/specs/0002-atalhos-de-apps.md`
+/// (FR-4/FR-6).
 private struct AppShortcutsRow: View {
     @Environment(RemoteModel.self) var model
 
@@ -238,14 +240,13 @@ private struct AppShortcutsRow: View {
                     AppShortcutButton(resolved: resolved)
                 }
             }
-            .frame(height: 40)
-            .padding(.horizontal, 30)
         }
     }
 }
 
-/// Toque abre o app na TV (`ed.apps.launch`). Mesmo estilo de `KeyButton`, com o logo do app
-/// no lugar do SF Symbol.
+/// Toque lança o app na TV (`POST` REST, ver `TVApplicationClient`). Mostra o logo oficial da
+/// Smart Hub como um "tile", não um glyph dentro de uma keycap — mais fiel ao que aparece na
+/// própria TV.
 private struct AppShortcutButton: View {
     let resolved: ResolvedApp
     @Environment(RemoteModel.self) var model
@@ -257,12 +258,25 @@ private struct AppShortcutButton: View {
         } label: {
             Image(resolved.app.assetName)
                 .resizable()
-                .scaledToFit()
-                .frame(width: 22, height: 22)
-                .clipShape(Circle())
+                .scaledToFill()
+                .frame(width: 51, height: 38)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .stroke(Color.white.opacity(0.13), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.4), radius: 3, y: 2)
         }
-        .buttonStyle(KeyCapStyle(tint: Theme.key, shape: .circle))
+        .buttonStyle(AppTileButtonStyle())
         .help(resolved.app.displayName)
         .accessibilityLabel(resolved.app.displayName)
+    }
+}
+
+private struct AppTileButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.93 : 1)
+            .animation(.spring(response: 0.16, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }

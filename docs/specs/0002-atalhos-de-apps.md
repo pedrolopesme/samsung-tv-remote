@@ -29,7 +29,7 @@ perfeitamente — testado ao vivo, ver "Protocolo / dados". O protocolo doc marc
 
 ## Objetivos
 
-1. Mostrar uma linha de ícones de apps **favoritos** entre o cabeçalho e o D-pad.
+1. Mostrar uma linha de ícones de apps **favoritos** no rodapé do controle, acima de Preferências/Sair.
 2. Ao conectar, descobrir via REST quais dos apps conhecidos (abaixo) a TV reconhece, testando os
    `appId` candidatos de cada um.
 3. Toque no ícone abre o app na TV (`POST` REST) usando o `appId` confirmado — sem navegação manual.
@@ -42,14 +42,19 @@ e uma nova chave, o mecanismo de baixo generaliza).
 
 | Chave | Nome exibido | Ícone | `appId` candidatos (ordem de prioridade) | Confirmado na AU8000 |
 |---|---|---|---|---|
-| `netflix` | Netflix | `docs/specs/assets/0002-icons/netflix.png` | `3201907018807`, `11101200001` | ✅ 200, `running:true` |
-| `youtube` | YouTube | `docs/specs/assets/0002-icons/youtube.png` | `111299001912` | ✅ 200, `running:true` |
-| `prime-video` | Prime Video | `docs/specs/assets/0002-icons/prime-video.png` | `3201910019365`, `3201512006785` | ✅ 200, `running:false` |
-| `globoplay` | globoplay | `docs/specs/assets/0002-icons/globoplay.png` | `3201908019022` | ❌ 404 (ID errado ou não instalado nesta TV) |
+| `netflix` | Netflix | `docs/specs/assets/0002-icons/netflix.png` | `3201907018807`, `11101200001`, `org.tizen.netflixapp` | ✅ 200, `running:true` |
+| `youtube` | YouTube | `docs/specs/assets/0002-icons/youtube.png` | `111299001912`, `9Ur5IzDKqV.TizenYouTube` | ✅ 200, `running:true` |
+| `prime-video` | Prime Video | `docs/specs/assets/0002-icons/prime-video.png` | `3201910019365`, `3201512006785`, `org.tizen.primevideo`, `org.tizen.ignition` | ✅ 200, `running:false` |
+| `globoplay` | globoplay | `docs/specs/assets/0002-icons/globoplay.png` | `3201908019022`, `org.tizen.globoplayapp` | ❌ 404 nos dois, mesmo com o app instalado e aberto (ver "Questões em aberto") |
 
-IDs candidatos vêm de `xchwarze/samsung-tv-ws-api/APPLICATIONS.md` (comunidade, não garantidos —
-"IDs can change over time and can differ by TV year / Tizen version"). Por isso cada app pode ter
-mais de um candidato: o primeiro que a TV confirmar (`GET` 200) vira o `appId` usado.
+Ícones: arte oficial da Smart Hub (mesmo CDN que a própria página de catálogo da Samsung usa —
+`d1oxlq5h9kq8q5.cloudfront.net/tvstore/contents/<appId>/icon_*.png`), não logos genéricos — fica
+mais fiel ao que já aparece na tela da TV.
+
+IDs candidatos vêm de `xchwarze/samsung-tv-ws-api/APPLICATIONS.md` e
+`blog-razrabotchika/homebridge-samsung-tizen-applications` (comunidade, não garantidos — "IDs can
+change over time and can differ by TV year / Tizen version"). Por isso cada app pode ter mais de
+um candidato: o primeiro que a TV confirmar (`GET` 200) vira o `appId` usado.
 
 ## Fora do escopo
 
@@ -65,7 +70,9 @@ mais de um candidato: o primeiro que a TV confirmar (`GET` 200) vira o `appId` u
 
 ### Linha de favoritos
 
-- Nova linha no `RemoteView`, entre o cabeçalho e o D-pad (mesmo estilo de `KeyButton`).
+- Nova linha no `RemoteView`, no rodapé do controle, acima de Preferências/Reconectar/Sair.
+  Cada ícone é um "tile" retangular com a arte oficial da Smart Hub, não um glyph numa keycap
+  redonda — mais fiel ao visual real da TV.
 - Até 4 ícones: um por chave conhecida que esteja **marcada como favorita** *e* **confirmada via
   REST** na conexão atual.
 - Populada de forma assíncrona depois de conectar; se a TV não confirmar nenhum app (REST falhar
@@ -117,7 +124,7 @@ desta spec de "disparar `ed.apps.launch` pra todos os candidatos às cegas".
 | FR-1 | Ao conectar com sucesso, testar via `GET` REST os `candidateAppIds` de cada app conhecido, em paralelo. |
 | FR-2 | Guardar em memória o primeiro `appId` candidato que responder 200 (REST) para cada app conhecido. |
 | FR-3 | Preferências → seção "Apps": toggle de favorito só para as chaves confirmadas na última consulta; favoritos persistidos (ordenados) no UserDefaults por chave. |
-| FR-4 | Mostrar linha de até 4 ícones de favoritos (chave bundlada, marcada como favorita e confirmada na última consulta) entre o cabeçalho e o D-pad; ocultar a linha se não houver nenhum favorito confirmado. |
+| FR-4 | Mostrar linha de até 4 ícones de favoritos (chave bundlada, marcada como favorita e confirmada na última consulta) no rodapé do controle, acima de Preferências/Sair; ocultar a linha se não houver nenhum favorito confirmado. |
 | FR-5 | Toque num ícone envia `POST` REST com o `appId` resolvido (FR-2) daquela chave. |
 | FR-6 | Falha de rede ou nenhum app confirmado não bloqueia nem atrasa o resto do controle — a linha de apps simplesmente não aparece. |
 
@@ -143,9 +150,12 @@ necessários para globoplay (404 com o único ID conhecido).
 
 ## Questões em aberto
 
-- `globoplay` deu 404 com o único `appId` da lista comunitária (`3201908019022`) na AU8000 de teste
-  — pode ser ID desatualizado ou o app genuinamente não estar instalado nessa TV específica. Precisa
-  de mais um `appId` candidato (se alguém achar um atualizado) ou aceitar que esse favorito nunca
-  aparece nessa TV (comportamento já é "falha silenciosa" por design, FR-6).
-- Quantos dos 4 ícones cabem lado a lado nos 288 pt de largura sem espremer o D-pad visualmente —
-  ainda não confirmado por captura de tela (ambiente de desenvolvimento tem limitação para isso).
+- `globoplay` não resolve nesta TV mesmo com o app **instalado e aberto de verdade** — investigado
+  a fundo: o `appId` `3201908019022` é confirmado pelo **catálogo oficial da Samsung Brasil**
+  (nome, versão, atualizado 10/2025) e mesmo assim dá 404; o alias `org.tizen.globoplayapp` também.
+  Até o plugin Homebridge mais usado (677★) depende do mesmo `ed.installedApp.get` morto pra listar
+  apps — não é uma alternativa. Conclusão: essa TV provavelmente roda um `appId` regional/de lote
+  específico da Samsung Brasil, não documentado em nenhuma base pública. O único caminho confiável
+  pra descobrir é o Tizen Studio (Device Manager → "Installed Web App List" → `App ID - WAS`),
+  que exige Modo Desenvolvedor na TV — fora do alcance de um agente sem acesso físico. Decisão:
+  aceito como está — falha silenciosa por design (FR-6), revisitar se alguém achar o ID real.
