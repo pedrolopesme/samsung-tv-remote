@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft |
+| **Status** | Accepted (mockups revisados no FigCraft; protocolo SSDP ainda não validado na TV real) |
 | **Autor** | Pedro |
 | **Criada** | 2026-10-16 |
 | **Depende de** | 0001 |
@@ -37,18 +37,32 @@ Zero dependências (ADR 0001): implementar à mão com socket BSD, no mesmo esti
 
 ## Experiência
 
-### `SetupView`
+Mockups em FigCraft, arquivo "SamsungRemote", página "0003 — Descoberta automática" (4 frames).
 
-- Ao aparecer a tela, dispara a busca SSDP automaticamente, sem bloquear nada — o campo de IP e
-  o botão "Conectar" continuam utilizáveis desde o primeiro frame.
-- Timeout curto (~3 s, ver "Protocolo / dados"). Se nada responder nesse tempo, a tela não muda:
-  fica exatamente como é hoje, só com o campo de IP vazio pra digitar.
-- Achou exatamente 1 TV: preenche o campo de IP com o valor encontrado (usuário ainda pode
-  apagar/editar antes de clicar Conectar — nunca conecta sozinho sem o usuário confirmar).
-- Achou mais de 1: mostra uma lista curta abaixo do campo ("TVs encontradas: Sala • Quarto"),
-  tocar numa preenche o campo com aquele IP.
-- Nenhum texto de erro por "não achou nada" — isso é esperado e comum (TV em standby, rede sem
-  suporte a multicast, firewall etc.), não é uma falha do app.
+### `SetupView` — 4 estados da mesma tela
+
+**1 · Buscando (0–3 s) — FR-1/FR-6**
+Campo de IP vazio (placeholder `192.168.0.50`), igual hoje. Abaixo dele, um spinner pequeno +
+"Procurando TVs na rede…" (texto secundário). Botão "Conectar" desabilitado (campo vazio) — regra
+já existente, inalterada. Campo e botão seguem usáveis o tempo todo; falha de socket só apaga o
+spinner sem avisar nada.
+
+**2 · Exatamente 1 TV — FR-3**
+Campo preenchido com o IP do `LOCATION`, borda em accent (mostra que veio da descoberta, não foi
+digitado). Abaixo, ✓ verde + "TV encontrada na rede · IP preenchido". Botão "Conectar" habilitado
+(campo não-vazio, regra existente). O destaque (borda accent + texto verde) desaparece assim que o
+usuário edita o campo manualmente — nunca conecta sozinho.
+
+**3 · Várias TVs — FR-4**
+Campo continua vazio (ambíguo demais pra preencher sozinho). Abaixo, "`N` TVs Samsung encontradas
+· clique para usar". Lista com uma linha por TV: IP em negrito + "Samsung · UPnP :`porta`" em
+texto secundário (porta vem do `LOCATION` de cada resposta). Hover numa linha revela um rótulo
+"usar" à direita. Tocar preenche o campo com aquele IP e remove a lista — a tela passa a parecer o
+estado 2. Lista é descartada ao sair da tela (nada persiste — isso é o roadmap 0007).
+
+**4 · Nada encontrado (~3 s) — FR-5**
+Spinner some, tela volta a ficar idêntica à de hoje: sem lista, sem texto, sem erro. Standby,
+firewall ou rede sem suporte a multicast são resultados esperados, não falhas.
 
 ## Protocolo / dados
 
@@ -75,10 +89,10 @@ USN: ...
 
 - Filtra respostas por `ST` (bate com o que foi enviado) e/ou `SERVER` contendo "samsung" —
   várias coisas na rede respondem SSDP, a maioria não é a TV.
-- O IP da TV vem do host da URL em `LOCATION` — não precisa buscar o XML de descrição do
-  dispositivo (`http://<ip>:9197/dmr`), só o IP já basta pra alimentar o `TVInfoClient.fetch`/
-  `setUp(host:)` que já existe (spec 0001) — a validação de "é mesmo uma Samsung TV" quem faz é
-  esse fluxo, SSDP só sugere o IP.
+- O IP (e a porta, pra mostrar "UPnP :`porta`" na lista quando há mais de uma TV) vêm do host/porta
+  da URL em `LOCATION` — não precisa buscar o XML de descrição do dispositivo
+  (`http://<ip>:9197/dmr`), só a URL já basta. A validação de "é mesmo uma Samsung TV" quem faz é o
+  fluxo existente (`TVInfoClient.fetch`/`setUp(host:)`, spec 0001) — SSDP só sugere o candidato.
 - Implementação nova: `SSDPDiscovery` (ou similar) em `Core/TV/`, socket BSD cru (`socket`,
   `sendto` multicast, `recvfrom` com timeout), parsing de texto HTTP-like simples (não precisa de
   parser HTTP completo, só separar `header: valor` por linha). Mesmo estilo de `WakeOnLAN.swift`
