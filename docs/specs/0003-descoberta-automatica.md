@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted (mockups revisados no FigCraft; protocolo SSDP ainda não validado na TV real) |
+| **Status** | Accepted (protocolo SSDP validado contra a AU8000 real via script; sandbox/entitlement ainda não testado) |
 | **Autor** | Pedro |
 | **Criada** | 2026-10-16 |
 | **Depende de** | 0001 |
@@ -66,7 +66,8 @@ firewall ou rede sem suporte a multicast são resultados esperados, não falhas.
 
 ## Protocolo / dados
 
-**SSDP (UPnP discovery)**, porta UDP 1900, multicast `239.255.255.250`.
+**SSDP (UPnP discovery)**, porta UDP 1900, multicast `239.255.255.250`. **Validado contra a AU8000
+real** (`192.168.68.109`, 2026-10-19, script Python descartável — não representa o código final).
 
 Envio (M-SEARCH):
 ```
@@ -74,29 +75,53 @@ M-SEARCH * HTTP/1.1
 HOST: 239.255.255.250:1900
 MAN: "ssdp:discover"
 MX: 2
-ST: urn:samsung.com:device:RemoteControlReceiver:1
+ST: upnp:rootdevice
 ```
 
-Resposta esperada (texto HTTP-like sobre UDP, várias podem chegar de dispositivos diferentes na
-rede — roteador, outras smart TVs, impressoras etc.):
+⚠️ **O `ST` do roadmap (`urn:samsung.com:device:RemoteControlReceiver:1`) não funciona** — testado
+5x, zero respostas. `ST: ssdp:all` funciona mas é ruidoso (9+ linhas só da TV). `ST:
+upnp:rootdevice` é o equilíbrio certo: testado 5x, 5/5 a TV respondeu, 1 linha por serviço.
+
+Resposta real da TV pra `upnp:rootdevice` (chegam **3 respostas do mesmo IP**, não 1):
 ```
 HTTP/1.1 200 OK
-LOCATION: http://<ip-da-tv>:9197/dmr
-SERVER: ...Samsung...
-ST: urn:samsung.com:device:RemoteControlReceiver:1
-USN: ...
+LOCATION: http://192.168.68.109:7678/nservice/
+SERVER: Samsung-Linux/4.1, UPnP/1.0, Samsung_UPnP_SDK/1.0
+ST: upnp:rootdevice
+USN: uuid:827c17fe-2309-4b24-a117-38cb94ae3fa3::upnp:rootdevice
+```
+```
+HTTP/1.1 200 OK
+LOCATION: http://192.168.68.109:9197/dmr
+SERVER: Samsung-Linux/4.1, UPnP/1.0, Samsung_UPnP_SDK/1.0
+ST: upnp:rootdevice
+USN: uuid:2ba8b004-b48f-4628-a77f-9f1733d8a2b6::upnp:rootdevice
+```
+```
+HTTP/1.1 200 OK
+LOCATION: http://192.168.68.109:9080
+SERVER: Linux/4.1.10, UPnP/1.0, Portable SDK for UPnP devices
+X-User-Agent: NRDP MDX
+ST: upnp:rootdevice
+USN: uuid:SSTV-NL21-...::upnp:rootdevice
 ```
 
-- Filtra respostas por `ST` (bate com o que foi enviado) e/ou `SERVER` contendo "samsung" —
-  várias coisas na rede respondem SSDP, a maioria não é a TV.
-- O IP (e a porta, pra mostrar "UPnP :`porta`" na lista quando há mais de uma TV) vêm do host/porta
-  da URL em `LOCATION` — não precisa buscar o XML de descrição do dispositivo
-  (`http://<ip>:9197/dmr`), só a URL já basta. A validação de "é mesmo uma Samsung TV" quem faz é o
-  fluxo existente (`TVInfoClient.fetch`/`setUp(host:)`, spec 0001) — SSDP só sugere o candidato.
-- Implementação nova: `SSDPDiscovery` (ou similar) em `Core/TV/`, socket BSD cru (`socket`,
-  `sendto` multicast, `recvfrom` com timeout), parsing de texto HTTP-like simples (não precisa de
-  parser HTTP completo, só separar `header: valor` por linha). Mesmo estilo de `WakeOnLAN.swift`
-  (sem `Network.framework`, sem dependência externa).
+A 3ª é o serviço MDX do Netflix rodando na própria TV (SDK de 2ª tela), não a Samsung — `SERVER`
+não contém "samsung", filtro já exclui corretamente. As duas primeiras **são as duas Samsung de
+verdade, no mesmo IP, em portas diferentes** (`7678` = serviço principal Tizen, `9197` =
+MediaRenderer/DLNA). Isso importa pra deduplicação:
+
+- Filtra por `SERVER` contendo "samsung" (case-insensitive) — único critério necessário, testado.
+- **Deduplica por host (IP), nunca por host+porta** — a mesma TV manda ≥2 respostas Samsung
+  válidas em portas diferentes; sem isso, uma TV só apareceria como "2 TVs encontradas" (bug).
+  Mantém a porta da primeira resposta Samsung de cada IP, só pra exibir "UPnP :`porta`" na lista.
+- O IP vem do host da URL em `LOCATION` — não precisa buscar o XML do dispositivo, só a URL já
+  basta. A validação de "é mesmo uma Samsung TV" quem faz é o fluxo existente
+  (`TVInfoClient.fetch`/`setUp(host:)`, spec 0001) — SSDP só sugere o candidato.
+- Implementação: `SSDPDiscovery` em `Core/TV/`, socket BSD cru (`socket`, `sendto` multicast,
+  `recvfrom` com timeout via `SO_RCVTIMEO`), parsing de texto HTTP-like simples (só separar
+  `header: valor` por linha, sem parser HTTP completo). Mesmo estilo de `WakeOnLAN.swift` — sem
+  `Network.framework`, sem dependência externa (ADR 0001).
 - Timeout: `MX: 2` no pedido + margem de rede → ~3 s de espera total antes de considerar "nada
   encontrado" (consistente com o timeout de 2 s já usado no health-check REST, spec 0001).
 
@@ -121,24 +146,21 @@ USN: ...
 
 ## Plano de testes
 
-**Automatizado** (`SamsungRemoteTests/`): fixture de resposta SSDP válida da Samsung + fixtures de
-respostas de outros dispositivos (devem ser ignoradas) + resposta malformada (não deve lançar
-erro); extração do IP a partir do `LOCATION`.
+**Automatizado** (`SamsungRemoteTests/`): fixtures com as 3 respostas reais capturadas acima
+(2 Samsung em portas diferentes + 1 Netflix/MDX a ignorar); extração de IP+porta; dedup por host.
 
-**Manual na TV** (`docs/tv/UN65AU8000GXZD.md`): confirmar que a AU8000 responde ao `ST`
-`urn:samsung.com:device:RemoteControlReceiver:1` (⚠️ nunca testado — ver "Questões em aberto");
-testar com a TV ligada e em standby; testar numa rede com mais de uma Samsung TV, se possível.
+**Manual na TV** (`docs/tv/UN65AU8000GXZD.md`): o protocolo já foi validado por script (ver
+"Protocolo / dados") — falta confirmar que o **app empacotado e com sandbox** consegue enviar/
+receber multicast igual ao script fez (⚠️ entitlement, ver "Questões em aberto"); testar com a TV
+ligada e em standby.
 
 ## Questões em aberto
 
-- ⚠️ Essa TV responde de fato ao `ST` `urn:samsung.com:device:RemoteControlReceiver:1`? Esse
-  valor veio só do roadmap, nunca foi validado — mesma categoria de suposição que já se provou
-  falsa antes (`ed.installedApp.get`, spec 0002). Se não responder, o plano B é mandar `ST:
-  ssdp:all` (mais genérico, qualquer dispositivo UPnP responde) e filtrar depois pelo `SERVER`
-  header ou pelo conteúdo do XML em `LOCATION`.
 - ⚠️ Receber respostas de multicast UDP dentro do App Sandbox pode exigir a entitlement
-  `com.apple.security.network.server` além da já existente `network.client`. Só descobre
-  testando o build real; se precisar, vira ADR próprio (AGENTS.md exige justificar qualquer
-  entitlement nova).
-- SSDP funciona com a TV em standby/"rede em espera"? Provável que não — mesma incerteza já
-  marcada no health-check REST (spec 0001) — mas nunca testado especificamente para SSDP.
+  `com.apple.security.network.server` além da já existente `network.client`. O script de teste
+  rodou **fora do sandbox** (Python direto no terminal) — não prova que o app empacotado vai
+  conseguir a mesma coisa. Só descobre testando o build real; se precisar, vira ADR próprio
+  (AGENTS.md exige justificar qualquer entitlement nova).
+- SSDP funciona com a TV em standby/"rede em espera"? Script testado só com a TV ligada. Provável
+  que não funcione em standby — mesma incerteza já marcada no health-check REST (spec 0001) — mas
+  nunca testado especificamente para SSDP.
