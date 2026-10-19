@@ -88,7 +88,8 @@ scripts/                  # utilitários de diagnóstico (sem dependências)
   O token vai para o Keychain; IP e MAC vão para o UserDefaults do sandbox.
 - O certificado autoassinado da TV só é aceito para o host configurado (`TVWebSocketClient`).
   Não generalize isso para "aceitar qualquer certificado".
-- Entitlements mínimos: sandbox + `network.client`. Justifique em ADR qualquer adição.
+- Entitlements mínimos: sandbox + `network.client` + `network.server` (SSDP, ver ADR 0004).
+  Justifique em ADR qualquer adição nova.
 
 ## Limites do agente
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted (protocolo SSDP validado contra a AU8000 real via script; sandbox/entitlement ainda não testado) |
+| **Status** | Implemented (protocolo + entitlement `network.server` validados contra a AU8000 real) |
 | **Autor** | Pedro |
 | **Criada** | 2026-10-16 |
 | **Depende de** | 0001 |
@@ -129,8 +129,8 @@ MediaRenderer/DLNA). Isso importa pra deduplicação:
 
 | ID | Requisito |
 |---|---|
-| FR-1 | Ao abrir `SetupView`, disparar a busca SSDP numa task separada, sem bloquear a tela. |
-| FR-2 | Filtrar respostas por `ST`/`SERVER` da Samsung; extrair o IP do `LOCATION`. |
+| FR-1 | Ao abrir `SetupView`, disparar a busca SSDP (`ST: upnp:rootdevice`) numa task separada, sem bloquear a tela. |
+| FR-2 | Filtrar respostas por `SERVER` contendo "samsung"; deduplicar por host (IP); extrair IP+porta do `LOCATION`. |
 | FR-3 | Exatamente 1 TV encontrada → preencher o campo de IP (editável, não autoconecta). |
 | FR-4 | Mais de 1 TV encontrada → listar pra escolher; tocar preenche o campo. |
 | FR-5 | Nenhuma encontrada em ~3 s → nada muda na tela, sem mensagem de erro. |
@@ -138,11 +138,11 @@ MediaRenderer/DLNA). Isso importa pra deduplicação:
 
 ## Critérios de aceite
 
-- [ ] Automatizado: parsing de uma resposta SSDP válida (fixture) extrai o IP certo; respostas de
-      outros dispositivos (sem o `ST`/`SERVER` esperado) são ignoradas; resposta malformada não
-      derruba o parser.
-- [ ] Manual na TV: `SetupView` encontra a AU8000 de verdade na rede e preenche o IP sozinho;
-      comportamento com a TV em standby; comportamento numa rede sem a TV (nada quebra).
+- [x] Automatizado: parsing de uma resposta SSDP válida (fixture) extrai IP+porta certos; resposta
+      sem "samsung" no `SERVER` é ignorada; resposta malformada/sem `LOCATION` não derruba o
+      parser; duas respostas Samsung do mesmo IP em portas diferentes deduplicam pra 1 candidato.
+- [x] Manual na TV: `SetupView` encontra a AU8000 de verdade (app empacotado, sandbox) e preenche
+      o IP sozinho — **confirmado pelo usuário, 2026-10-19**. Standby/sem-TV ainda não testados.
 
 ## Plano de testes
 
@@ -156,11 +156,8 @@ ligada e em standby.
 
 ## Questões em aberto
 
-- ⚠️ Receber respostas de multicast UDP dentro do App Sandbox pode exigir a entitlement
-  `com.apple.security.network.server` além da já existente `network.client`. O script de teste
-  rodou **fora do sandbox** (Python direto no terminal) — não prova que o app empacotado vai
-  conseguir a mesma coisa. Só descobre testando o build real; se precisar, vira ADR próprio
-  (AGENTS.md exige justificar qualquer entitlement nova).
-- SSDP funciona com a TV em standby/"rede em espera"? Script testado só com a TV ligada. Provável
-  que não funcione em standby — mesma incerteza já marcada no health-check REST (spec 0001) — mas
-  nunca testado especificamente para SSDP.
+- ✅ **Resolvido**: a entitlement `com.apple.security.network.server` era mesmo necessária —
+  confirmado rodando o app empacotado de verdade (ver ADR 0004). Sem ela, zero TVs encontradas
+  mesmo com TV e Mac na mesma rede; com ela, funciona.
+- SSDP funciona com a TV em standby/"rede em espera"? Ainda não testado (só testado com a TV
+  ligada) — mesma incerteza já marcada no health-check REST (spec 0001).
