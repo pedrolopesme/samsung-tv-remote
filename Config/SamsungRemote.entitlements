@@ -6,5 +6,9 @@
 	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<!-- SSDP (spec 0003): recebe respostas UDP de IPs diferentes do multicast que o app manda.
+	     network.client sozinho não cobre esse padrão. Ver ADR 0004. -->
+	<key>com.apple.security.network.server</key>
+	<true/>
 </dict>
 </plist>
