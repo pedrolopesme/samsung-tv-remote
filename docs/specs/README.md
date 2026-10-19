@@ -7,6 +7,7 @@ Uma spec por feature, numerada em sequência: `NNNN-titulo-curto.md`. Copie de [
 | # | Título | Status |
 |---|---|---|
 | [0001](0001-remote-control-mvp.md) | Controle remoto MVP | Accepted |
+| [0002](0002-atalhos-de-apps.md) | Atalhos de apps | Accepted |
 
 Regras:
 - A spec descreve **o quê** e **por quê**. O **como** fica no código e, se for polêmico, num ADR.

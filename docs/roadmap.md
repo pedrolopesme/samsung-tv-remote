@@ -4,7 +4,6 @@ Candidatas a próximas specs, em ordem de valor percebido. Cada uma vira `docs/s
 
 | # | Feature | Notas |
 |---|---|---|
-| 0002 | **Atalhos de apps** (Netflix, YouTube, Globoplay, Prime…) | Ler a lista com `ed.installedApp.get` e abrir com `ed.apps.launch`. Ícones na linha de cima do controle. |
 | 0003 | **Atalhos globais e teclas de mídia** | Volume e play/pause do Mac controlando a TV, mesmo com o popover fechado. Precisa de opt-in. |
 | 0004 | **Descoberta automática** | SSDP (`urn:samsung.com:device:RemoteControlReceiver:1`) para listar TVs na rede no onboarding. |
 | 0005 | **Teclado / envio de texto** | `ms.remote.control` com `TypeOfRemote: SendInputString` (Base64) para campos de busca. ⚠️ validar |
