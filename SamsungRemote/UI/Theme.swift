@@ -21,6 +21,9 @@ enum Theme {
     static let power = Color(red: 0.93, green: 0.30, blue: 0.28)
     static let success = Color(red: 0.35, green: 0.85, blue: 0.55)
     static let warning = Color(red: 1.0, green: 0.74, blue: 0.30)
+    /// Erro de protocolo/envio (distinto de `power`, que é o vermelho do botão liga/desliga).
+    /// Usado no overlay de teclado (spec 0004).
+    static let error = Color(red: 1.0, green: 0.4196, blue: 0.3686)
 
     static let remoteWidth: CGFloat = 288
 

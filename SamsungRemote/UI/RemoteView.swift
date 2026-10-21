@@ -5,6 +5,7 @@ import SwiftUI
 struct RemoteView: View {
     @Environment(RemoteModel.self) var model
     @FocusState var isFocused: Bool
+    @State private var isKeyboardOpen = false
 
     var body: some View {
         VStack(spacing: 18) {
@@ -14,6 +15,10 @@ struct RemoteView: View {
                 KeyButton(.source, systemImage: "rectangle.on.rectangle")
                 KeyButton(.menu, systemImage: "line.3.horizontal")
                 KeyButton(.info, systemImage: "info")
+                KeyboardToggleButton(isActive: isKeyboardOpen) {
+                    if isKeyboardOpen { model.endTextInput() }
+                    isKeyboardOpen.toggle()
+                }
             }
             .frame(height: 40)
             .padding(.horizontal, 30)
@@ -63,11 +68,19 @@ struct RemoteView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        .overlay {
+            if isKeyboardOpen {
+                TextKeyboardOverlay(isOpen: $isKeyboardOpen)
+                    .transition(.opacity)
+            }
+        }
         .animation(.easeInOut(duration: 0.2), value: model.status)
+        .animation(.easeOut(duration: 0.18), value: isKeyboardOpen)
         .focusable()
         .focusEffectDisabled()
         .focused($isFocused)
         .onKeyPress { press in
+            guard !isKeyboardOpen else { return .ignored }
             guard let key = KeyboardShortcuts.remoteKey(for: press) else { return .ignored }
             model.send(key)
             return .handled
@@ -273,7 +286,7 @@ private struct AppShortcutButton: View {
     }
 }
 
-private struct AppTileButtonStyle: ButtonStyle {
+struct AppTileButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.93 : 1)

@@ -212,6 +212,34 @@ final class RemoteModel {
         }
     }
 
+    // MARK: - Texto (spec 0004 — ⚠️ protocolo não validado na AU8000 real)
+
+    /// Manda o texto inteiro pro campo focado na TV (`SendInputString`). Mesmo padrão de
+    /// reconexão de `sendNow(_:RemoteKey)`, mas devolve sucesso/falha — o overlay de teclado
+    /// mostra isso como estado visual (pílula verde/vermelha), não como `errorMessage` global.
+    @discardableResult
+    func sendText(_ text: String) async -> Bool {
+        guard !text.isEmpty else { return false }
+        if client == nil { await connect() }
+        guard let client = self.client else { return false }
+        do {
+            try await client.send(RemoteMessage.text(text))
+            return true
+        } catch {
+            handleDisconnect(of: client)
+            await connect()
+            guard let retryClient = self.client else { return false }
+            return (try? await retryClient.send(RemoteMessage.text(text))) != nil
+        }
+    }
+
+    /// Fecha o teclado virtual da TV (`SendInputEnd`) ao fechar o overlay. Fire-and-forget —
+    /// nada no app depende de confirmação disso.
+    func endTextInput() {
+        guard let client else { return }
+        Task { try? await client.send(RemoteMessage.textEnd()) }
+    }
+
     // MARK: - Apps
 
     /// Apps favoritos presentes na TV conectada, na ordem em que foram marcados.
