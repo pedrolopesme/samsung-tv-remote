@@ -51,6 +51,8 @@ wss://<ip>:8002/api/v2/channels/samsung.remote.control?name=<base64(nome)>[&toke
 | `ms.channel.timeOut` | O pop-up expirou sem resposta | Pedir para tentar de novo |
 | `ms.channel.clientConnect` / `clientDisconnect` | Outros clientes | Ignorar |
 | `ed.installedApp.get` | Resposta à lista de apps (ver §5) | Futuro (spec 0002) |
+| `ms.remote.imeStart` | A TV focou um campo de texto (teclado virtual abriu) | Futuro (spec 0004) ⚠️ |
+| `ms.remote.imeEnd` | A TV desfocou/fechou o campo de texto | Futuro (spec 0004) ⚠️ |
 
 Exemplo de `ms.channel.connect`:
 
@@ -99,6 +101,45 @@ Gerenciador de conexão de dispositivos › Lista de dispositivos**. ⚠️ (os 
 | Cores | `KEY_RED`, `KEY_GREEN`, `KEY_YELLOW`, `KEY_CYAN` |
 
 O app implementa o subconjunto em `RemoteKey`. Ao adicionar uma tecla, atualize esta tabela.
+
+### Envio de texto (`SendInputString`) ✅ validado na AU8000 real, com ressalva importante
+
+```json
+{
+  "method": "ms.remote.control",
+  "params": {
+    "Cmd": "PGFzZTY0KHRleHRvKQ==",
+    "DataOfCmd": "base64",
+    "TypeOfRemote": "SendInputString"
+  }
+}
+```
+
+- `Cmd`: o texto inteiro do campo, em **Base64 de UTF-8**. `DataOfCmd` é sempre a string fixa
+  `"base64"` (não confundir com o `DataOfCmd` de `SendRemoteKey`, que ali carrega o código da tecla).
+- **Só funciona em campos nativos do Tizen** (ex. busca do Smart Hub) — **confirmado** na AU8000 real,
+  2026-10-20: o texto chega certo, sem precisar de nenhum broadcast antes.
+- **Não funciona em apps de streaming de terceiros** (YouTube, Prime Video — **confirmado** na AU8000
+  real, 2026-10-20): o envio não dá erro (a TV aceita a mensagem no WebSocket normalmente), mas o
+  texto não aparece em lugar nenhum. Esses apps renderizam o próprio teclado virtual dentro da UI do
+  app (grade de botões navegada por D-pad), **não usam o IME nativo do Tizen** — não existe campo de
+  sistema focado pra `SendInputString` injetar, então a TV simplesmente descarta a mensagem. Não é um
+  problema de formato/protocolo: é limitação de arquitetura de cada app, inerente à plataforma.
+  Netflix não foi testado, mas o mesmo padrão é esperado (apps de streaming costumam implementar
+  teclado próprio).
+- O broadcast `{"method":"ms.channel.emit","params":{"event":"custom.remote.textReceived","to":"broadcast"}}`,
+  que algumas TVs exigem segundo `samsungtvws` antes do primeiro envio, **não é necessário na AU8000**
+  — confirmado: funcionou sem ele no campo nativo.
+- Pra fechar o teclado virtual da TV: `{"method":"ms.remote.control","params":{"TypeOfRemote":"SendInputEnd"}}`.
+  ⚠️ Ainda não testado se isso fecha o teclado de fato ou se a TV já fecha sozinha ao perder foco.
+- A TV sinaliza quando um campo de texto nativo está focado pelos eventos `ms.remote.imeStart` /
+  `ms.remote.imeEnd` (ver §2) — ⚠️ ainda não confirmado se esses eventos também disparam (ou não)
+  quando o "teclado" é só a UI interna de um app de streaming; seria um jeito de distinguir os dois
+  casos automaticamente, mas não foi testado.
+- ⚠️ Acentuação e emoji no campo nativo: ainda não testado especificamente (só texto ASCII simples
+  confirmado funcionando até agora).
+- Fonte do formato original: `samsungtvws` (`remote.py`, classes `SendInputString`/`SendInputEnd`).
+  Validação de comportamento na TV real: `docs/specs/0004-teclado-envio-texto.md`.
 
 ## 4. Wake-on-LAN
 
