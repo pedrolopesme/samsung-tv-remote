@@ -18,29 +18,15 @@
     });
   }
 
-  /* ---------------- Animação de montagem (palco) ----------------
-   * As peças começam "espalhadas" (pre-animate) e se encaixam
-   * (settled) quando o palco entra na viewport. Sem suporte a
-   * IntersectionObserver ou com prefers-reduced-motion, mostra
-   * direto o estado final (sem classe pre-animate). */
-  const assembly = document.getElementById("assembly");
+  /* ---------------- Vídeo do palco (hero, toca uma vez) ----------------
+   * Termina parado no controle montado (sem loop, por design). Com
+   * prefers-reduced-motion, nem toca: pausa direto no primeiro frame. */
+  const stageVideo = document.querySelector(".stage__video");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  if (assembly && !reduceMotion && "IntersectionObserver" in window) {
-    assembly.classList.add("pre-animate");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            assembly.classList.remove("pre-animate");
-            assembly.classList.add("settled");
-            observer.disconnect();
-          }
-        });
-      },
-      { threshold: 0.35 }
-    );
-    observer.observe(assembly);
+  if (stageVideo && reduceMotion) {
+    stageVideo.removeAttribute("autoplay");
+    stageVideo.pause();
   }
 
   /* ---------------- Link de download (release mais recente) ----------------

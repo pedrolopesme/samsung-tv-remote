@@ -66,41 +66,18 @@
       </div>
       <p class="hero__meta">Grátis e open source · macOS 14+ · TVs Samsung Tizen 2018 em diante</p>
 
-      <!-- Palco: animação de montagem das peças do controle -->
+      <!-- Palco: animação de montagem das peças do controle (vídeo real) -->
       <div class="stage" id="stage">
-        <div class="stage__glow" aria-hidden="true"></div>
-        <div class="stage__menubar">
-          <span class="stage__menubar-icon" aria-hidden="true"></span>
-          <span class="stage__menubar-clock">Seg 21 out · 22:14</span>
-        </div>
-        <p class="stage__badge">ÁREA DA ANIMAÇÃO · hero loop</p>
+        <video
+          class="stage__video"
+          src="assets/hero-montagem.mp4"
+          autoplay
+          muted
+          playsinline
+          aria-label="Animação: as peças do controle físico se montam no controle do Mac, termina parado no controle montado"
+        ></video>
 
-        <div class="stage__assembly" id="assembly">
-          <div class="plate plate--power" data-plate>
-            <div class="plate__piece piece--power"></div>
-          </div>
-          <div class="plate plate--dpad" data-plate>
-            <div class="plate__piece piece--dpad">
-              <span class="piece__ok">OK</span>
-            </div>
-          </div>
-          <div class="plate plate--vol" data-plate>
-            <div class="plate__piece piece--vol"></div>
-            <div class="plate__piece piece--ch"></div>
-          </div>
-          <div class="plate plate--media" data-plate>
-            <div class="plate__piece piece--media"></div>
-            <div class="plate__piece piece--media"></div>
-            <div class="plate__piece piece--media"></div>
-          </div>
-        </div>
-
-        <ul class="stage__legend">
-          <li><span class="dot dot--power"></span>01 · Energia e status</li>
-          <li><span class="dot dot--dpad"></span>02 · D-pad e OK</li>
-          <li><span class="dot dot--vol"></span>03 · Volume, canal e mudo</li>
-          <li><span class="dot dot--media"></span>04 · Mídia e atalhos de apps</li>
-        </ul>
+        <p class="stage__tagline">O controle que você já conhece,<br />agora na barra de menus.</p>
 
         <div class="stage__keycaps">
           <div class="keycap"><kbd>↑ ↓ ← →</kbd><span>navega na TV</span></div>
