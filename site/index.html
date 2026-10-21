@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Samsung Remote — Sua TV Samsung, no topo do Mac</title>
+  <meta name="description" content="Controle nativo de macOS pra TVs Samsung Tizen: liga, navega, ajusta volume e digita pela rede local. Sem cloud, sem conta, código aberto." />
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2361A8FF'/%3E%3Cstop offset='1' stop-color='%23A78BFA'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='10' fill='url(%23g)'/%3E%3Ccircle cx='12' cy='9' r='3' fill='%2305070A'/%3E%3Crect x='9' y='21' width='14' height='3' rx='1.5' fill='%2305070Acc'/%3E%3C/svg%3E" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <a class="skip-link" href="#conteudo">Pular pro conteúdo</a>
+
+  <!-- ============ NAV ============ -->
+  <header class="nav">
+    <div class="nav__inner container">
+      <a class="nav__brand" href="#topo" aria-label="Samsung Remote — início">
+        <span class="logo-mark" aria-hidden="true"><span class="logo-dot"></span><span class="logo-bar"></span></span>
+        <span class="nav__wordmark">Samsung Remote</span>
+      </a>
+
+      <nav class="nav__links" aria-label="Navegação principal">
+        <a href="#recursos">Recursos</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#perguntas">Perguntas</a>
+      </nav>
+
+      <a class="btn btn--nav" data-download-cta href="https://github.com/pedrolopesme/samsung-tv-remote/releases/latest">Baixar</a>
+
+      <button class="nav__burger" id="navBurger" aria-expanded="false" aria-controls="navMobile" aria-label="Abrir menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+
+    <div class="nav__mobile" id="navMobile">
+      <a href="#recursos">Recursos</a>
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#perguntas">Perguntas</a>
+      <a class="btn btn--primary" data-download-cta href="https://github.com/pedrolopesme/samsung-tv-remote/releases/latest">Baixar para macOS</a>
+    </div>
+  </header>
+
+  <main id="conteudo">
+    <!-- ============ HERO ============ -->
+    <section class="hero container" id="topo">
+      <p class="eyebrow eyebrow--pill">macOS · vive na barra de menus</p>
+      <h1 class="hero__title">
+        Sua TV Samsung,<br />
+        <span class="text-gradient">no topo do Mac.</span>
+      </h1>
+      <p class="hero__sub">
+        Um controle nativo que mora na barra de menus: liga a TV, navega, ajusta o
+        volume e digita — tudo pela rede local. Sem cloud, sem conta, sem controle
+        perdido no sofá.
+      </p>
+      <div class="hero__ctas">
+        <a class="btn btn--primary btn--lg" data-download-cta href="https://github.com/pedrolopesme/samsung-tv-remote/releases/latest">Baixar para macOS</a>
+        <a class="btn btn--ghost btn--lg" href="https://github.com/pedrolopesme/samsung-tv-remote" target="_blank" rel="noopener">Ver no GitHub</a>
+      </div>
+      <p class="hero__meta">Grátis e open source · macOS 14+ · TVs Samsung Tizen 2018 em diante</p>
+
+      <!-- Palco: animação de montagem das peças do controle -->
+      <div class="stage" id="stage">
+        <div class="stage__glow" aria-hidden="true"></div>
+        <div class="stage__menubar">
+          <span class="stage__menubar-icon" aria-hidden="true"></span>
+          <span class="stage__menubar-clock">Seg 21 out · 22:14</span>
+        </div>
+        <p class="stage__badge">ÁREA DA ANIMAÇÃO · hero loop</p>
+
+        <div class="stage__assembly" id="assembly">
+          <div class="plate plate--power" data-plate>
+            <div class="plate__piece piece--power"></div>
+          </div>
+          <div class="plate plate--dpad" data-plate>
+            <div class="plate__piece piece--dpad">
+              <span class="piece__ok">OK</span>
+            </div>
+          </div>
+          <div class="plate plate--vol" data-plate>
+            <div class="plate__piece piece--vol"></div>
+            <div class="plate__piece piece--ch"></div>
+          </div>
+          <div class="plate plate--media" data-plate>
+            <div class="plate__piece piece--media"></div>
+            <div class="plate__piece piece--media"></div>
+            <div class="plate__piece piece--media"></div>
+          </div>
+        </div>
+
+        <ul class="stage__legend">
+          <li><span class="dot dot--power"></span>01 · Energia e status</li>
+          <li><span class="dot dot--dpad"></span>02 · D-pad e OK</li>
+          <li><span class="dot dot--vol"></span>03 · Volume, canal e mudo</li>
+          <li><span class="dot dot--media"></span>04 · Mídia e atalhos de apps</li>
+        </ul>
+
+        <div class="stage__keycaps">
+          <div class="keycap"><kbd>↑ ↓ ← →</kbd><span>navega na TV</span></div>
+          <div class="keycap"><kbd>⏎</kbd><span>confirma</span></div>
+        </div>
+
+        <p class="stage__scroll-note">montagem em camadas · a animação encaixa as peças no scroll</p>
+      </div>
+    </section>
+
+    <!-- ============ ANATOMIA ============ -->
+    <section class="anatomy container">
+      <div class="anatomy__text">
+        <p class="eyebrow">ANATOMIA</p>
+        <h2>Cada peça do controle, remontada no Mac.</h2>
+        <p class="body-lg">
+          O controle físico some no sofá; este não. Ao rolar a página, as camadas
+          se encaixam e viram um único controle de 290&nbsp;px — com D-pad, volume,
+          mídia e texto.
+        </p>
+        <p class="note">↓ &nbsp;as peças se juntam no scroll</p>
+      </div>
+
+      <div class="anatomy__photos">
+        <picture>
+          <source srcset="assets/remote-normal.webp" type="image/webp" />
+          <img class="photo photo--back" src="assets/remote-normal.png" alt="Samsung Remote conectado: D-pad, volume, mídia e atalhos de apps" width="177" height="430" loading="lazy" />
+        </picture>
+        <picture>
+          <source srcset="assets/remote-keyboard.webp" type="image/webp" />
+          <img class="photo photo--front" src="assets/remote-keyboard.png" alt="Overlay de teclado do Samsung Remote enviando o texto “Breaking Bad” pra TV" width="148" height="360" loading="lazy" />
+        </picture>
+      </div>
+
+      <ul class="layer-cards">
+        <li class="layer-card">
+          <span class="chip chip--blue">✛</span>
+          <div><strong>D-pad + OK</strong><p>Setas do teclado navegam o menu da TV</p></div>
+        </li>
+        <li class="layer-card">
+          <span class="chip chip--blue">+−</span>
+          <div><strong>Volume e canal</strong><p>Com repetição: segure e ele continua</p></div>
+        </li>
+        <li class="layer-card">
+          <span class="chip chip--cyan">▶</span>
+          <div><strong>Mídia, Fonte e apps</strong><p>Play/pause, troca de entrada, Netflix e YouTube</p></div>
+        </li>
+        <li class="layer-card">
+          <span class="chip chip--purple">⌨</span>
+          <div><strong>Texto direto do teclado</strong><p>Digita no Mac, aparece na busca da TV</p></div>
+        </li>
+      </ul>
+
+      <p class="anatomy__footnote">Sem Electron, sem navegador escondido: Swift e SwiftUI puros falando WebSocket com a TV.</p>
+    </section>
+
+    <!-- ============ RECURSOS ============ -->
+    <section class="features container" id="recursos">
+      <h2 class="center">Pequeno, nativo e rápido.</h2>
+      <p class="body-lg center">
+        Abre instantâneo, ocupa um ícone e some quando você não precisa. Tudo
+        acontece na sua rede — nenhum dado sai de casa.
+      </p>
+
+      <div class="feature-grid">
+        <article class="feature-card">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#7FB8FF" stroke-width="1.8"><circle cx="12" cy="13" r="8"/><path d="M12 8v4" stroke-linecap="round"/></svg>
+          <h3>Liga e desliga a TV</h3>
+          <p>Wake-on-LAN acorda a TV do standby pela rede. Um clique desliga de volta.</p>
+        </article>
+        <article class="feature-card">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#7FB8FF" stroke-width="1.8"><circle cx="9" cy="9" r="5"/><path d="M12.5 12.5 L20 20" stroke-linecap="round"/><path d="M15 11l3 1" stroke-linecap="round"/></svg>
+          <h3>Pareia uma vez só</h3>
+          <p>Você aceita o pedido na tela da TV uma vez; o token fica guardado no Keychain do Mac.</p>
+        </article>
+        <article class="feature-card">
+          <span class="icon icon--glyph">⌘</span>
+          <h3>Controle pelo teclado</h3>
+          <p>Setas, ⏎, ⌫, + / −, M e H. A mão nunca sai do teclado para achar o controle.</p>
+        </article>
+        <article class="feature-card">
+          <span class="icon icon--glyph">▶</span>
+          <h3>Seus apps num toque</h3>
+          <p>Netflix, YouTube e Prime Video abrem direto na TV, sem passar pelo Smart Hub.</p>
+        </article>
+        <article class="feature-card">
+          <span class="icon icon--glyph">◎</span>
+          <h3>Acha a TV sozinho</h3>
+          <p>O app procura TVs na sua rede e já preenche o endereço. Você só confirma.</p>
+        </article>
+        <article class="feature-card feature-card--highlight">
+          <svg class="icon" viewBox="0 0 24 24" fill="#9CC8FF"><path d="M12 3l9 7v11h-6v-7H9v7H3V10z"/></svg>
+          <h3>Fica tudo em casa</h3>
+          <p>Sem nuvem, sem conta, sem telemetria. Só o seu Mac conversando com a sua TV.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ AJUSTES ============ -->
+    <section class="settings container">
+      <div class="settings__text">
+        <h2>Ajustes à mão, sem menu escondido.</h2>
+        <p class="body-lg">
+          Nome e modelo da TV, status da conexão, IP, MAC para Wake-on-LAN e a
+          lista completa de atalhos — tudo numa janela só.
+        </p>
+        <ul class="bullets">
+          <li>Salvar, parear de novo ou esquecer a TV em um clique</li>
+          <li>Diagnóstico da TV quando a rede implica</li>
+          <li>Atalhos documentados dentro do próprio app</li>
+        </ul>
+      </div>
+      <div class="settings__frame">
+        <picture>
+          <source srcset="assets/settings.webp" type="image/webp" />
+          <img src="assets/settings.png" alt="Janela de Preferências do Samsung Remote: nome, modelo, status, IP, MAC e atalhos de teclado" width="841" height="860" loading="lazy" />
+        </picture>
+      </div>
+    </section>
+
+    <!-- ============ COMO FUNCIONA / INSTALAÇÃO ============ -->
+    <section class="install container" id="como-funciona">
+      <h2 class="center">Instalar leva dois minutos.</h2>
+      <p class="body-lg center">
+        Nunca instalou nada fora da App Store? Sem problema — é só seguir os três passos.
+      </p>
+
+      <ol class="steps">
+        <li class="step">
+          <span class="step__number">01</span>
+          <h3>Baixe o arquivo</h3>
+          <p>Clique em "Baixar para macOS". O Mac salva um arquivo .dmg na pasta Downloads — dê dois cliques nele.</p>
+        </li>
+        <li class="step">
+          <span class="step__number">02</span>
+          <h3>Arraste para Aplicativos</h3>
+          <p>Na primeira abertura, clique com o botão direito no app › Abrir. É só uma vez: o app é assinado localmente, não pela Apple.</p>
+        </li>
+        <li class="step">
+          <span class="step__number">03</span>
+          <h3>Conecte sua TV</h3>
+          <p>Clique no ícone do controle na barra de menus, escolha a TV encontrada e aceite o aviso que aparece na tela da TV.</p>
+        </li>
+      </ol>
+
+      <div class="callout">
+        <h3>Onde acho o IP da TV?</h3>
+        <p>
+          Na TV: Configurações › Geral › Rede › Status da rede › Configurações de
+          IP. E para conseguir ligar a TV pelo Mac, ative Configurações › Geral ›
+          Rede › Avançadas › "Ligar com dispositivo móvel".
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ DOWNLOAD ============ -->
+    <section class="download container">
+      <div class="download__banner">
+        <div class="download__glow" aria-hidden="true"></div>
+        <h2>Pegue o controle.</h2>
+        <p class="body-lg">
+          Download direto, sem cadastro, código aberto. Se a TV é Samsung e o Mac é seu, já dá para usar.
+        </p>
+        <a class="btn btn--white btn--lg" data-download-cta href="https://github.com/pedrolopesme/samsung-tv-remote/releases/latest">Baixar o .dmg</a>
+        <p class="download__meta" data-download-meta>
+          <a href="https://github.com/pedrolopesme/samsung-tv-remote/releases/latest">Ver a versão mais recente no GitHub</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ FAQ ============ -->
+    <section class="faq container" id="perguntas">
+      <h2>Perguntas de quem nunca usou.</h2>
+      <div class="faq-grid">
+        <div class="faq-item">
+          <h3>Funciona com qualquer TV Samsung?</h3>
+          <p>Modelos Tizen de 2018 em diante. O desenvolvimento é feito e testado numa UN65AU8000 de 2021.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Precisa de internet?</h3>
+          <p>Não. Mac e TV só precisam estar na mesma rede, por Wi-Fi ou cabo. Nada passa por servidores.</p>
+        </div>
+        <div class="faq-item">
+          <h3>O Mac disse que não pode abrir o app.</h3>
+          <p>É esperado: o app é assinado localmente, sem conta paga de desenvolvedor. Clique com o botão direito no app › Abrir. Só na primeira vez.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Dá para digitar dentro do Netflix?</h3>
+          <p>Não: apps de streaming não aceitam o teclado nativo da Samsung. O envio de texto vale nos campos da própria TV, como a busca do Smart Hub.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer container">
+    <hr />
+    <div class="site-footer__row">
+      <p>Samsung Remote · projeto pessoal, código aberto sob licença MIT</p>
+      <nav aria-label="Links do projeto">
+        <a href="https://github.com/pedrolopesme/samsung-tv-remote" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/pedrolopesme/samsung-tv-remote/tree/main/docs/specs" target="_blank" rel="noopener">Specs</a>
+        <a href="https://github.com/pedrolopesme/samsung-tv-remote/blob/main/docs/protocol/samsung-tizen-remote.md" target="_blank" rel="noopener">Protocolo</a>
+        <a href="https://github.com/pedrolopesme/samsung-tv-remote/releases" target="_blank" rel="noopener">Changelog</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
