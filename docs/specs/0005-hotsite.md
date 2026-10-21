@@ -35,11 +35,10 @@ direto do `.dmg`.
   telemetria").
 - CMS ou conteúdo editável sem tocar código — é um site de projeto pessoal, editar o HTML
   é suficiente.
-- Animação de scroll-scrubbing pixel-perfeita da "montagem em camadas" do hero — o mockup
-  mostra um storyboard detalhado (peças, rastros, guias); a implementação usa uma versão
-  simplificada (4 placas coloridas que se encaixam uma vez, ao entrar na viewport, via
-  `IntersectionObserver` + CSS transitions) que transmite a mesma ideia sem a fragilidade
-  de um scroll-linked animation feito à mão.
+- Animação de scroll-scrubbing da "montagem em camadas" do hero — o mockup mostra um
+  storyboard detalhado (peças, rastros, guias) amarrado ao scroll; a implementação usa o
+  vídeo real da montagem (`hero-montagem.mp4`, 1680×900, H.264 comprimido a ~956 KB), que
+  toca uma vez e para no último frame (sem loop, por decisão de design).
 
 ## Experiência
 
@@ -48,7 +47,7 @@ frames: `Hotsite · 1440` desktop, `Hotsite · 390` mobile — mesmo conteúdo, 
 coluna no mobile).
 
 Seções, nessa ordem: nav (logo + links + "Baixar", menu hambúrguer no mobile) → hero (H1 +
-CTAs + "palco" com animação de montagem do controle) → anatomia (as 4 peças do controle,
+CTAs + "palco" com o vídeo da montagem do controle) → anatomia (as 4 peças do controle,
 com os screenshots reais do app) → grade de 6 recursos → screenshot da janela de
 Preferências → 3 passos de instalação + callout do IP → faixa de download → FAQ (4
 perguntas) → rodapé.
@@ -75,10 +74,11 @@ página de releases — nunca quebra, só perde o atalho direto.
 - `site/index.html` — estrutura semântica, uma seção por bloco do mockup.
 - `site/styles.css` — mobile-first; tokens de cor como custom properties; breakpoint
   desktop único em `@media (min-width: 880px)`.
-- `site/script.js` — menu mobile (toggle de classe), animação de entrada do palco
-  (`IntersectionObserver`, respeitando `prefers-reduced-motion`), e o fetch de release
-  acima.
-- `site/assets/` — 3 screenshots reais do app (mesmos de `docs/screenshots/`,
+- `site/script.js` — menu mobile (toggle de classe), respeito a `prefers-reduced-motion`
+  no vídeo do palco (não toca quando o usuário prefere menos movimento), e o fetch de
+  release acima.
+- `site/assets/` — o vídeo do hero (`hero-montagem.mp4`, 1680×900, H.264, ~956 KB após
+  compressão) e 3 screenshots reais do app (mesmos de `docs/screenshots/`,
   redimensionados pro tamanho de exibição), em PNG + WebP (`<picture>` com WebP
   primeiro).
 - `.github/workflows/pages.yml` — publica `site/` no GitHub Pages a cada push em `main`
@@ -91,7 +91,7 @@ página de releases — nunca quebra, só perde o atalho direto.
 | ID | Requisito |
 |---|---|
 | FR-1 | Nav com logo, links de âncora (`#recursos`, `#como-funciona`, `#perguntas`) e CTA "Baixar"; menu hambúrguer substitui os links no mobile. |
-| FR-2 | Hero com H1, CTAs ("Baixar para macOS" / "Ver no GitHub") e o "palco" com a animação de montagem das 4 peças do controle. |
+| FR-2 | Hero com H1, CTAs ("Baixar para macOS" / "Ver no GitHub") e o "palco" com o vídeo da montagem das 4 peças do controle (toca uma vez, para no último frame). |
 | FR-3 | Botões de download apontam pro `.dmg` da release mais recente via GitHub API; fallback gracioso pra página de releases se a API falhar. |
 | FR-4 | Layout responsivo: um HTML/CSS só, breakpoint em 880px reproduzindo os dois estados do mockup (não dois sites separados). |
 | FR-5 | Screenshots reais do app (não ilustrações) nas seções "Anatomia" e "Ajustes". |
@@ -101,8 +101,8 @@ página de releases — nunca quebra, só perde o atalho direto.
 
 - [x] Automatizado: não aplicável (sem lógica testável — site estático de conteúdo).
 - [x] Manual: verificado num browser real (Chrome DevTools, `python3 -m http.server`
-      local) nos dois breakpoints (390 e 1440) — nav, menu mobile (abre/fecha), animação
-      do palco (assenta ao entrar na viewport), fetch de release (populou
+      local) nos dois breakpoints (390 e 1440) — nav, menu mobile (abre/fecha), vídeo do
+      palco (toca uma vez e para no último frame), fetch de release (populou
       `v0.3.0 · 1,6 MB · ...` e os links de download com o `.dmg` real), screenshots reais
       carregando corretamente, sem overlaps ou cortes em nenhuma seção.
 - [ ] Manual: GitHub Pages publicado de verdade e acessível em
@@ -113,7 +113,9 @@ página de releases — nunca quebra, só perde o atalho direto.
 ## Plano de testes
 
 **Manual (browser real)**: servido localmente, inspecionado via Chrome DevTools nos dois
-breakpoints. Três bugs reais encontrados e corrigidos nessa sessão (não hipotéticos):
+breakpoint. Bugs reais encontrados e corrigidos ao longo do desenvolvimento (não
+hipotéticos; 1 e 2 são da animação em CSS, uma iteração anterior depois substituída pelo
+vídeo real):
 
 1. `.stage__assembly` (`position: absolute`, todos os filhos também absolutos) colapsava
    pra largura 0 sem um `width` explícito — as "placas" da animação viravam linhas finas
@@ -125,10 +127,14 @@ breakpoints. Três bugs reais encontrados e corrigidos nessa sessão (não hipot
    a pilha de screenshots e os cards abaixo no mobile.
 4. `padding` de `.nav__mobile` não é limitado por `max-height: 0` — o painel "fechado"
    ainda mostrava uma fresta do primeiro link.
+5. `img { max-width: 100% }` sem `height: auto` deixava o atributo `height` do HTML
+   fixado enquanto o `max-width` encolhia a largura — as imagens saíam achatadas. Fix:
+   `height: auto` global.
 
 ## Questões em aberto
 
 - Habilitar GitHub Pages (Settings › Pages › Source: GitHub Actions) é um passo manual
   nas configurações do repositório — fora do alcance de um PR de código.
-- O design da "animação de montagem" do hero foi simplificado (ver "Fora do escopo");
-  se quiser a versão scroll-scrubbing completa do mockup, é uma spec futura.
+- O hero usa o vídeo real da montagem, uma vez, parando no último frame; a versão
+  scroll-scrubbing completa do mockup continua fora de escopo (ver "Fora do escopo") e
+  seria uma spec futura.
