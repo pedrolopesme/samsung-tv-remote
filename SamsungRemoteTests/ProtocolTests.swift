@@ -25,6 +25,37 @@ struct ProtocolTests {
         #expect(try RemoteMessage.key(.up, action: .release).contains("\"Cmd\":\"Release\""))
     }
 
+    @Test(
+        "SendInputString codifica o texto em Base64 de UTF-8",
+        arguments: [
+            ("Breaking Bad", "QnJlYWtpbmcgQmFk"),
+            ("café com açúcar", "Y2Fmw6kgY29tIGHDp8O6Y2Fy"),
+            ("👋", "8J+Riw=="),
+        ]
+    )
+    func textPayload(input: String, base64: String) throws {
+        let json = try RemoteMessage.text(input)
+        let object = try #require(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+        #expect(object["method"] as? String == "ms.remote.control")
+
+        let params = try #require(object["params"] as? [String: String])
+        #expect(params == [
+            "Cmd": base64,
+            "DataOfCmd": "base64",
+            "TypeOfRemote": "SendInputString",
+        ])
+    }
+
+    @Test("SendInputEnd fecha o teclado virtual da TV")
+    func textEndPayload() throws {
+        let json = try RemoteMessage.textEnd()
+        let object = try #require(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+        #expect(object["method"] as? String == "ms.remote.control")
+
+        let params = try #require(object["params"] as? [String: String])
+        #expect(params == ["TypeOfRemote": "SendInputEnd"])
+    }
+
     @Test("URL do WebSocket usa wss:8002, nome em base64 e token")
     func remoteControlURL() throws {
         let url = try #require(TVEndpoint.remoteControlURL(host: "192.168.0.50", clientName: "Mac Remote", token: "12345"))

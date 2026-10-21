@@ -85,6 +85,54 @@ enum RemoteMessage {
         }
     }
 
+    /// `SendInputString` — manda o texto inteiro do campo focado na TV, em Base64 de UTF-8.
+    /// ⚠️ Protocolo não validado na AU8000 real, ver `docs/specs/0004-teclado-envio-texto.md`.
+    struct TextPayload: Encodable {
+        let method = "ms.remote.control"
+        let params: TextParams
+    }
+
+    struct TextParams: Encodable {
+        let cmd: String
+        let dataOfCmd = "base64"
+        let typeOfRemote = "SendInputString"
+
+        enum CodingKeys: String, CodingKey {
+            case cmd = "Cmd"
+            case dataOfCmd = "DataOfCmd"
+            case typeOfRemote = "TypeOfRemote"
+        }
+    }
+
+    /// `SendInputEnd` — fecha o teclado virtual da TV.
+    struct TextEndPayload: Encodable {
+        let method = "ms.remote.control"
+        let params: TextEndParams
+    }
+
+    struct TextEndParams: Encodable {
+        let typeOfRemote = "SendInputEnd"
+
+        enum CodingKeys: String, CodingKey {
+            case typeOfRemote = "TypeOfRemote"
+        }
+    }
+
+    static func text(_ text: String) throws -> String {
+        let base64 = Data(text.utf8).base64EncodedString()
+        let payload = TextPayload(params: TextParams(cmd: base64))
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return String(decoding: try encoder.encode(payload), as: UTF8.self)
+    }
+
+    static func textEnd() throws -> String {
+        let payload = TextEndPayload(params: TextEndParams())
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return String(decoding: try encoder.encode(payload), as: UTF8.self)
+    }
+
     static func key(_ key: RemoteKey, action: Action = .click) throws -> String {
         let payload = Payload(params: Params(cmd: action.rawValue, dataOfCmd: key.rawValue))
         let encoder = JSONEncoder()
