@@ -36,21 +36,43 @@ direto do `.dmg`.
 - CMS ou conteúdo editável sem tocar código — é um site de projeto pessoal, editar o HTML
   é suficiente.
 - Animação de scroll-scrubbing da "montagem em camadas" do hero — o mockup mostra um
-  storyboard detalhado (peças, rastros, guias) amarrado ao scroll; a implementação usa o
-  vídeo real da montagem (`hero-montagem.mp4`, 1680×900, H.264 comprimido a ~956 KB), que
-  toca uma vez e para no último frame (sem loop, por decisão de design).
+  storyboard detalhado (peças, rastros, guias) amarrado ao scroll; a implementação usa
+  vídeo real em vez de CSS/JS: `hero-montagem.mp4` (mobile, dentro do "palco") e
+  `hero-bg.mp4` (desktop, fundo full-bleed do viewport), ambos tocando uma vez e parando
+  no último frame (sem loop, por decisão de design).
+- Vídeo de fundo do desktop em resolução de produção definitiva — o FigCraft documenta o
+  canvas em 1440×900 com exports em 2560×1600 (Retina); o asset atual (`hero-bg.mp4`,
+  1440×900, comprimido a ~1,3 MB) é a versão mais recente enviada pelo design, mas pode
+  ser trocado por uma versão de resolução maior sem mudar nada no código (mesmo nome de
+  arquivo).
 
 ## Experiência
 
 Mockups em FigCraft, arquivo "SamsungRemote", página "Hotsite — one-page (proposta)" (2
 frames: `Hotsite · 1440` desktop, `Hotsite · 390` mobile — mesmo conteúdo, pilha de uma
-coluna no mobile).
+coluna no mobile). O hero do desktop ganhou uma segunda iteração depois do mockup
+inicial, documentada como anotação de texto no próprio arquivo FigCraft (nós "Spec ·
+..." na página do hotsite: título, intro, canvas, zona de texto, zona de movimento,
+frame final e fallback).
 
-Seções, nessa ordem: nav (logo + links + "Baixar", menu hambúrguer no mobile) → hero (H1 +
-CTAs + "palco" com o vídeo da montagem do controle) → anatomia (as 4 peças do controle,
-com os screenshots reais do app) → grade de 6 recursos → screenshot da janela de
-Preferências → 3 passos de instalação + callout do IP → faixa de download → FAQ (4
-perguntas) → rodapé.
+Seções, nessa ordem: nav (logo + links + "Baixar", menu hambúrguer no mobile) → hero →
+anatomia (as 4 peças do controle, com os screenshots reais do app) → grade de 6 recursos
+→ screenshot da janela de Preferências → 3 passos de instalação + callout do IP → faixa
+de download → FAQ (4 perguntas) → rodapé.
+
+**Hero, desktop (≥880px)**: vídeo full-bleed cobrindo o viewport inicial inteiro
+(`object-fit: cover`, sem card/moldura) — o movimento acontece no fundo, a página só
+sobrepõe nav e texto. A nav flutua por cima (já era `sticky` + `backdrop-filter: blur`
+com fundo semitransparente; o hero sobe atrás dela via
+`margin-top: calc(-1 * var(--nav-h))`, o vídeo some por trás da faixa translúcida). Zona
+de texto à esquerda (H1 + sub + CTAs + meta) com um scrim em gradiente horizontal
+(`rgba(5,7,10,.95) → 0`, esquerda pra direita) garantindo contraste; "role para ver os
+recursos ↓" no canto inferior esquerdo. O vídeo mostra as 4 camadas coloridas se
+montando, virando o controle e deslizando até aparecer dentro de um Mac (barra de menus
+e popover do app), parando nesse frame final sem loop.
+
+**Hero, mobile (<880px)**: o mockup do FigCraft não redesenhou o frame mobile — mantém o
+"palco" original (card abaixo do texto, com o vídeo da montagem do controle).
 
 Cores, tipografia (Inter) e todo o texto extraídos diretamente do arquivo `.figcraft`
 (cores de `fills`/`strokes`, `font_size`/`font_style` de cada nó de texto) — não
@@ -74,13 +96,17 @@ página de releases — nunca quebra, só perde o atalho direto.
 - `site/index.html` — estrutura semântica, uma seção por bloco do mockup.
 - `site/styles.css` — mobile-first; tokens de cor como custom properties; breakpoint
   desktop único em `@media (min-width: 880px)`.
-- `site/script.js` — menu mobile (toggle de classe), respeito a `prefers-reduced-motion`
-  no vídeo do palco (não toca quando o usuário prefere menos movimento), e o fetch de
+- `site/script.js` — menu mobile (toggle de classe); escolhe e carrega só um vídeo do
+  hero por `matchMedia("(min-width: 880px)")` (desktop baixa `hero-bg.mp4`, mobile baixa
+  `hero-montagem.mp4` — nunca os dois: o `src` não vem no HTML), respeitando
+  `prefers-reduced-motion` (não toca, fica só no poster/primeiro frame); e o fetch de
   release acima.
-- `site/assets/` — o vídeo do hero (`hero-montagem.mp4`, 1680×900, H.264, ~956 KB após
-  compressão) e 3 screenshots reais do app (mesmos de `docs/screenshots/`,
-  redimensionados pro tamanho de exibição), em PNG + WebP (`<picture>` com WebP
-  primeiro).
+- `site/assets/` — dois vídeos do hero, H.264 comprimido (`libx264 -preset slow -crf
+  23..26 -movflags +faststart`): `hero-montagem.mp4` (mobile, 1680×900, ~956 KB) e
+  `hero-bg.mp4` (desktop, 1440×900, CRF 26, ~1,3 MB) + `hero-bg-poster.jpg` (último
+  frame, fallback pro `prefers-reduced-motion` e antes do vídeo carregar); e 3
+  screenshots reais do app (mesmos de `docs/screenshots/`, redimensionados pro tamanho
+  de exibição), em PNG + WebP (`<picture>` com WebP primeiro).
 - `.github/workflows/pages.yml` — publica `site/` no GitHub Pages a cada push em `main`
   que toque esse diretório, via `actions/upload-pages-artifact` +
   `actions/deploy-pages` (sem Jekyll — não processa os docs em Markdown do resto do
@@ -91,7 +117,7 @@ página de releases — nunca quebra, só perde o atalho direto.
 | ID | Requisito |
 |---|---|
 | FR-1 | Nav com logo, links de âncora (`#recursos`, `#como-funciona`, `#perguntas`) e CTA "Baixar"; menu hambúrguer substitui os links no mobile. |
-| FR-2 | Hero com H1, CTAs ("Baixar para macOS" / "Ver no GitHub") e o "palco" com o vídeo da montagem das 4 peças do controle (toca uma vez, para no último frame). |
+| FR-2 | Hero com H1, CTAs ("Baixar para macOS" / "Ver no GitHub") e vídeo real da montagem das 4 peças do controle, tocando uma vez e parando no último frame: full-bleed atrás de nav e texto no desktop, "palco" em card no mobile. |
 | FR-3 | Botões de download apontam pro `.dmg` da release mais recente via GitHub API; fallback gracioso pra página de releases se a API falhar. |
 | FR-4 | Layout responsivo: um HTML/CSS só, breakpoint em 880px reproduzindo os dois estados do mockup (não dois sites separados). |
 | FR-5 | Screenshots reais do app (não ilustrações) nas seções "Anatomia" e "Ajustes". |
@@ -102,7 +128,9 @@ página de releases — nunca quebra, só perde o atalho direto.
 - [x] Automatizado: não aplicável (sem lógica testável — site estático de conteúdo).
 - [x] Manual: verificado num browser real (Chrome DevTools, `python3 -m http.server`
       local) nos dois breakpoints (390 e 1440) — nav, menu mobile (abre/fecha), vídeo do
-      palco (toca uma vez e para no último frame), fetch de release (populou
+      hero (toca uma vez e para no último frame nos dois formatos: full-bleed atrás de
+      nav/texto no desktop, palco em card no mobile), só um vídeo baixado por vez
+      (confirmado via `currentSrc` do `<video>` ativo), fetch de release (populou
       `v0.3.0 · 1,6 MB · ...` e os links de download com o `.dmg` real), screenshots reais
       carregando corretamente, sem overlaps ou cortes em nenhuma seção.
 - [ ] Manual: GitHub Pages publicado de verdade e acessível em
@@ -138,3 +166,10 @@ vídeo real):
 - O hero usa o vídeo real da montagem, uma vez, parando no último frame; a versão
   scroll-scrubbing completa do mockup continua fora de escopo (ver "Fora do escopo") e
   seria uma spec futura.
+- O mockup do FigCraft só redesenhou o hero do desktop (full-bleed); o frame mobile não
+  foi tocado, então o mobile manteve o "palco" em card da iteração anterior — se o
+  design quiser o mesmo tratamento full-bleed no mobile depois, é atualização de spec.
+- `hero-bg.mp4` é a versão mais recente enviada pelo design (1440×900, a resolução do
+  canvas de referência); o FigCraft também pede um export 2560×1600 pra Retina, que pode
+  ser adicionado depois como uma segunda fonte (`<source media>`/`srcset`) sem mudar a
+  estrutura.
