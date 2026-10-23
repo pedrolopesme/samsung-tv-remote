@@ -49,40 +49,47 @@
 
   <main id="conteudo">
     <!-- ============ HERO ============ -->
-    <section class="hero container" id="topo">
-      <p class="eyebrow eyebrow--pill">macOS · vive na barra de menus</p>
-      <h1 class="hero__title">
-        Sua TV Samsung,<br />
-        <span class="text-gradient">no topo do Mac.</span>
-      </h1>
-      <p class="hero__sub">
-        Um controle nativo que mora na barra de menus: liga a TV, navega, ajusta o
-        volume e digita — tudo pela rede local. Sem cloud, sem conta, sem controle
-        perdido no sofá.
-      </p>
-      <div class="hero__ctas">
-        <a class="btn btn--primary btn--lg" data-download-cta href="https://github.com/pedrolopesme/samsung-tv-remote/releases/latest">Baixar para macOS</a>
-        <a class="btn btn--ghost btn--lg" href="https://github.com/pedrolopesme/samsung-tv-remote" target="_blank" rel="noopener">Ver no GitHub</a>
+    <section class="hero" id="topo">
+      <!-- Vídeo de fundo full-bleed (desktop): as peças se montam, viram o
+           controle e deslizam pro Mac, parando nesse frame final (sem loop). -->
+      <div class="hero__bg" aria-hidden="true">
+        <video
+          class="hero__bg-video"
+          muted
+          playsinline
+          poster="assets/hero-bg-poster.jpg"
+        ></video>
+        <div class="hero__scrim"></div>
       </div>
-      <p class="hero__meta">Grátis e open source · macOS 14+ · TVs Samsung Tizen 2018 em diante</p>
 
-      <!-- Palco: animação de montagem das peças do controle (vídeo real) -->
+      <div class="hero__inner container">
+        <p class="eyebrow eyebrow--pill">macOS · vive na barra de menus</p>
+        <h1 class="hero__title">
+          Sua TV Samsung,<br />
+          <span class="text-gradient">no topo do Mac.</span>
+        </h1>
+        <p class="hero__sub">
+          Um controle nativo que mora na barra de menus: liga a TV, navega, ajusta o
+          volume e digita — tudo pela rede local. Sem cloud, sem conta, sem controle
+          perdido no sofá.
+        </p>
+        <div class="hero__ctas">
+          <a class="btn btn--primary btn--lg" data-download-cta href="https://github.com/pedrolopesme/samsung-tv-remote/releases/latest">Baixar para macOS</a>
+          <a class="btn btn--ghost btn--lg" href="https://github.com/pedrolopesme/samsung-tv-remote" target="_blank" rel="noopener">Ver no GitHub</a>
+        </div>
+        <p class="hero__meta">Grátis e open source · macOS 14+ · TVs Samsung Tizen 2018 em diante</p>
+      </div>
+
+      <p class="hero__scroll-hint">role para ver os recursos&nbsp;↓</p>
+
+      <!-- Palco (mobile): animação de montagem das peças do controle (vídeo real) -->
       <div class="stage" id="stage">
         <video
           class="stage__video"
-          src="assets/hero-montagem.mp4"
-          autoplay
           muted
           playsinline
           aria-label="Animação: as peças do controle físico se montam no controle do Mac, termina parado no controle montado"
         ></video>
-
-        <p class="stage__tagline">O controle que você já conhece,<br />agora na barra de menus.</p>
-
-        <div class="stage__keycaps">
-          <div class="keycap"><kbd>↑ ↓ ← →</kbd><span>navega na TV</span></div>
-          <div class="keycap"><kbd>⏎</kbd><span>confirma</span></div>
-        </div>
 
         <p class="stage__scroll-note">montagem em camadas · a animação encaixa as peças no scroll</p>
       </div>

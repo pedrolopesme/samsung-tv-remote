@@ -18,15 +18,26 @@
     });
   }
 
-  /* ---------------- Vídeo do palco (hero, toca uma vez) ----------------
-   * Termina parado no controle montado (sem loop, por design). Com
-   * prefers-reduced-motion, nem toca: pausa direto no primeiro frame. */
-  const stageVideo = document.querySelector(".stage__video");
+  /* ---------------- Vídeo do hero: fundo full-bleed (desktop) ou palco
+     (mobile) ----------------
+   * Só um dos dois é baixado, de acordo com o breakpoint no load (o `src`
+   * não vem no HTML pra evitar baixar os dois). Toca uma vez e termina
+   * parado no frame final (sem loop, por design). Com prefers-reduced-motion
+   * não toca: fica só no poster/primeiro frame. */
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const isDesktop = window.matchMedia("(min-width: 880px)").matches;
+  const activeVideo = isDesktop
+    ? document.querySelector(".hero__bg-video")
+    : document.querySelector(".stage__video");
+  const activeSrc = isDesktop ? "assets/hero-bg.mp4" : "assets/hero-montagem.mp4";
 
-  if (stageVideo && reduceMotion) {
-    stageVideo.removeAttribute("autoplay");
-    stageVideo.pause();
+  if (activeVideo) {
+    activeVideo.src = activeSrc;
+    if (!reduceMotion) {
+      activeVideo.play().catch(() => {
+        /* autoplay bloqueado pelo navegador — fica no poster/primeiro frame */
+      });
+    }
   }
 
   /* ---------------- Link de download (release mais recente) ----------------
