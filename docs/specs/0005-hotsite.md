@@ -155,10 +155,11 @@ página de releases — nunca quebra, só perde o atalho direto.
       sem sobrepor o texto em nenhuma das três alturas testadas, fetch de release
       (populou `v0.3.0 · 1,6 MB · ...` e os links de download com o `.dmg` real),
       screenshots reais carregando corretamente, sem overlaps ou cortes em nenhuma seção.
-- [ ] Manual: GitHub Pages publicado de verdade e acessível em
-      `https://pedrolopesme.github.io/samsung-tv-remote/` — depende de habilitar Pages
-      nas configurações do repositório (Settings › Pages › Source: GitHub Actions),
-      passo único que não dá pra fazer só com código.
+- [x] Manual: GitHub Pages habilitado (via API, `build_type: workflow`, já que o passo
+      "Settings › Pages › Source: GitHub Actions" também é exposto por
+      `POST /repos/{owner}/{repo}/pages`) e publicado de verdade — verificado em
+      `https://pedrolopesme.github.io/samsung-tv-remote/` (HTTP 200, vídeo do hero
+      carregando do domínio real, console limpo).
 
 ## Plano de testes
 
@@ -188,8 +189,6 @@ vídeo real):
 
 ## Questões em aberto
 
-- Habilitar GitHub Pages (Settings › Pages › Source: GitHub Actions) é um passo manual
-  nas configurações do repositório — fora do alcance de um PR de código.
 - O hero usa o vídeo real da montagem, uma vez, parando no último frame; a versão
   scroll-scrubbing completa do mockup continua fora de escopo (ver "Fora do escopo") e
   seria uma spec futura.
