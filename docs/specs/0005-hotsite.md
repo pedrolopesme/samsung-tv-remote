@@ -37,14 +37,14 @@ direto do `.dmg`.
   é suficiente.
 - Animação de scroll-scrubbing da "montagem em camadas" do hero — o mockup mostra um
   storyboard detalhado (peças, rastros, guias) amarrado ao scroll; a implementação usa
-  vídeo real em vez de CSS/JS: `hero-montagem.mp4` (mobile, dentro do "palco") e
-  `hero-bg.mp4` (desktop, fundo full-bleed do viewport), ambos tocando uma vez e parando
-  no último frame (sem loop, por decisão de design).
-- Vídeo de fundo do desktop em resolução de produção definitiva — o FigCraft documenta o
-  canvas em 1440×900 com exports em 2560×1600 (Retina); o asset atual (`hero-bg.mp4`,
-  1440×900, comprimido a ~1,3 MB) é a versão mais recente enviada pelo design, mas pode
-  ser trocado por uma versão de resolução maior sem mudar nada no código (mesmo nome de
-  arquivo).
+  vídeo real em vez de CSS/JS, um por breakpoint (paisagem no desktop, retrato no
+  mobile), ambos tocando uma vez e parando no último frame (sem loop, por decisão de
+  design).
+- Vídeo de fundo em resolução de produção definitiva — o FigCraft documenta o canvas
+  desktop em 1440×900 com exports em 2560×1600 (Retina); os assets atuais (`hero-bg.mp4`
+  1440×900 e `hero-bg-mobile.mp4` 540×1080, ambos comprimidos) são as versões mais
+  recentes enviadas pelo design, mas podem ser trocados por versões de resolução maior
+  sem mudar nada no código (mesmo nome de arquivo).
 
 ## Experiência
 
@@ -71,8 +71,27 @@ recursos ↓" no canto inferior esquerdo. O vídeo mostra as 4 camadas coloridas
 montando, virando o controle e deslizando até aparecer dentro de um Mac (barra de menus
 e popover do app), parando nesse frame final sem loop.
 
-**Hero, mobile (<880px)**: o mockup do FigCraft não redesenhou o frame mobile — mantém o
-"palco" original (card abaixo do texto, com o vídeo da montagem do controle).
+**Hero, mobile (<880px)**: sem mockup do FigCraft pra esse tratamento (o frame
+`Hotsite · 390` não foi redesenhado) — extensão direta do mesmo padrão full-bleed do
+desktop, motivada por um vídeo retrato enviado depois (`hero-bg-mobile.mp4`, 540×1080;
+o "palco" em card da iteração anterior foi removido, já não fazia sentido pra um vídeo
+vertical). Mesmo mecanismo (vídeo + scrim + nav flutuando via margin negativo), mas:
+
+- Scrim vertical (não horizontal): `rgba(5,7,10,.95)` no topo, esmaecendo até quase
+  transparente perto do fim — o vídeo mobile concentra o "controle revelado" na parte de
+  baixo do frame, não à direita como no desktop.
+- Texto centralizado (como já era), não em coluna à esquerda.
+- Altura do hero (`height: 100svh`, não `min-height`) calculada a partir de uma medição
+  real do vídeo: o dispositivo/controle começa a aparecer a **64,8%** da altura do frame
+  (medido pixel a pixel no poster — `scripts` ad-hoc, não parte do repo). Com
+  `min-height: 100vh` ingênuo, o texto empurra o hero pra além do viewport, o vídeo
+  estica junto e o controle sai da área visível (vídeo igual, mas o "momento" dele fica
+  invisível sem rolar). `100svh` fixo resolve isso: o controle sempre aparece dentro do
+  primeiro viewport, nos tamanhos de tela comuns.
+- `@media (max-width: 879px) and (max-height: 720px)`: em telas baixas (iPhone SE e
+  afins) o texto sozinho já ocupa proporção grande da tela — esconde a pílula "macOS ·
+  vive na barra de menus" e reduz fontes pra abrir espaço suficiente antes do controle,
+  evitando sobreposição.
 
 Cores, tipografia (Inter) e todo o texto extraídos diretamente do arquivo `.figcraft`
 (cores de `fills`/`strokes`, `font_size`/`font_style` de cada nó de texto) — não
@@ -96,17 +115,19 @@ página de releases — nunca quebra, só perde o atalho direto.
 - `site/index.html` — estrutura semântica, uma seção por bloco do mockup.
 - `site/styles.css` — mobile-first; tokens de cor como custom properties; breakpoint
   desktop único em `@media (min-width: 880px)`.
-- `site/script.js` — menu mobile (toggle de classe); escolhe e carrega só um vídeo do
-  hero por `matchMedia("(min-width: 880px)")` (desktop baixa `hero-bg.mp4`, mobile baixa
-  `hero-montagem.mp4` — nunca os dois: o `src` não vem no HTML), respeitando
-  `prefers-reduced-motion` (não toca, fica só no poster/primeiro frame); e o fetch de
-  release acima.
+- `site/script.js` — menu mobile (toggle de classe); um único `<video class="hero__bg-video">`
+  pros dois breakpoints, `src` e `poster` escolhidos por `matchMedia("(min-width: 880px)")`
+  (desktop baixa `hero-bg.mp4`/`hero-bg-poster.jpg`, mobile baixa
+  `hero-bg-mobile.mp4`/`hero-bg-mobile-poster.jpg` — nunca os dois: nenhum dos dois vem
+  no HTML), respeitando `prefers-reduced-motion` (não toca, fica só no poster/primeiro
+  frame); e o fetch de release acima.
 - `site/assets/` — dois vídeos do hero, H.264 comprimido (`libx264 -preset slow -crf
-  23..26 -movflags +faststart`): `hero-montagem.mp4` (mobile, 1680×900, ~956 KB) e
-  `hero-bg.mp4` (desktop, 1440×900, CRF 26, ~1,3 MB) + `hero-bg-poster.jpg` (último
-  frame, fallback pro `prefers-reduced-motion` e antes do vídeo carregar); e 3
-  screenshots reais do app (mesmos de `docs/screenshots/`, redimensionados pro tamanho
-  de exibição), em PNG + WebP (`<picture>` com WebP primeiro).
+  23..26 -movflags +faststart`): `hero-bg.mp4` (desktop, 1440×900, CRF 26, ~1,3 MB) e
+  `hero-bg-mobile.mp4` (mobile, 540×1080, CRF 26, ~261 KB), cada um com seu
+  `hero-bg*-poster.jpg` (último frame, fallback pro `prefers-reduced-motion` e antes do
+  vídeo carregar); e 3 screenshots reais do app (mesmos de `docs/screenshots/`,
+  redimensionados pro tamanho de exibição), em PNG + WebP (`<picture>` com WebP
+  primeiro).
 - `.github/workflows/pages.yml` — publica `site/` no GitHub Pages a cada push em `main`
   que toque esse diretório, via `actions/upload-pages-artifact` +
   `actions/deploy-pages` (sem Jekyll — não processa os docs em Markdown do resto do
@@ -117,7 +138,7 @@ página de releases — nunca quebra, só perde o atalho direto.
 | ID | Requisito |
 |---|---|
 | FR-1 | Nav com logo, links de âncora (`#recursos`, `#como-funciona`, `#perguntas`) e CTA "Baixar"; menu hambúrguer substitui os links no mobile. |
-| FR-2 | Hero com H1, CTAs ("Baixar para macOS" / "Ver no GitHub") e vídeo real da montagem das 4 peças do controle, tocando uma vez e parando no último frame: full-bleed atrás de nav e texto no desktop, "palco" em card no mobile. |
+| FR-2 | Hero com H1, CTAs ("Baixar para macOS" / "Ver no GitHub") e vídeo real da montagem das 4 peças do controle, full-bleed atrás de nav e texto nos dois breakpoints (vídeo paisagem no desktop, retrato no mobile), tocando uma vez e parando no último frame. |
 | FR-3 | Botões de download apontam pro `.dmg` da release mais recente via GitHub API; fallback gracioso pra página de releases se a API falhar. |
 | FR-4 | Layout responsivo: um HTML/CSS só, breakpoint em 880px reproduzindo os dois estados do mockup (não dois sites separados). |
 | FR-5 | Screenshots reais do app (não ilustrações) nas seções "Anatomia" e "Ajustes". |
@@ -127,12 +148,13 @@ página de releases — nunca quebra, só perde o atalho direto.
 
 - [x] Automatizado: não aplicável (sem lógica testável — site estático de conteúdo).
 - [x] Manual: verificado num browser real (Chrome DevTools, `python3 -m http.server`
-      local) nos dois breakpoints (390 e 1440) — nav, menu mobile (abre/fecha), vídeo do
-      hero (toca uma vez e para no último frame nos dois formatos: full-bleed atrás de
-      nav/texto no desktop, palco em card no mobile), só um vídeo baixado por vez
-      (confirmado via `currentSrc` do `<video>` ativo), fetch de release (populou
-      `v0.3.0 · 1,6 MB · ...` e os links de download com o `.dmg` real), screenshots reais
-      carregando corretamente, sem overlaps ou cortes em nenhuma seção.
+      local) em três alturas mobile (667, 784, 852) e desktop (1440) — nav, menu mobile
+      (abre/fecha), vídeo do hero full-bleed nos dois breakpoints (toca uma vez e para
+      no último frame; só um vídeo baixado por vez, confirmado via `currentSrc` do
+      `<video>` ativo), controle do vídeo mobile visível no viewport inicial sem rolar e
+      sem sobrepor o texto em nenhuma das três alturas testadas, fetch de release
+      (populou `v0.3.0 · 1,6 MB · ...` e os links de download com o `.dmg` real),
+      screenshots reais carregando corretamente, sem overlaps ou cortes em nenhuma seção.
 - [ ] Manual: GitHub Pages publicado de verdade e acessível em
       `https://pedrolopesme.github.io/samsung-tv-remote/` — depende de habilitar Pages
       nas configurações do repositório (Settings › Pages › Source: GitHub Actions),
@@ -158,6 +180,11 @@ vídeo real):
 5. `img { max-width: 100% }` sem `height: auto` deixava o atributo `height` do HTML
    fixado enquanto o `max-width` encolhia a largura — as imagens saíam achatadas. Fix:
    `height: auto` global.
+6. `min-height: 100vh` no hero mobile deixava o texto empurrar a altura real do hero
+   pra além do viewport — o vídeo (absolute, inset:0) esticava junto, e como o "reveal"
+   do controle fica perto do fim do vídeo (medido: 64,8% da altura), ele saía da área
+   visível. Fix: `height: 100svh` fixo + espaçamento mais compacto, calculado a partir
+   dessa medição pra garantir folga sem sobrepor.
 
 ## Questões em aberto
 
@@ -166,10 +193,14 @@ vídeo real):
 - O hero usa o vídeo real da montagem, uma vez, parando no último frame; a versão
   scroll-scrubbing completa do mockup continua fora de escopo (ver "Fora do escopo") e
   seria uma spec futura.
-- O mockup do FigCraft só redesenhou o hero do desktop (full-bleed); o frame mobile não
-  foi tocado, então o mobile manteve o "palco" em card da iteração anterior — se o
-  design quiser o mesmo tratamento full-bleed no mobile depois, é atualização de spec.
-- `hero-bg.mp4` é a versão mais recente enviada pelo design (1440×900, a resolução do
-  canvas de referência); o FigCraft também pede um export 2560×1600 pra Retina, que pode
-  ser adicionado depois como uma segunda fonte (`<source media>`/`srcset`) sem mudar a
+- O mobile ganhou o tratamento full-bleed sem mockup do FigCraft (ver "Experiência") —
+  é uma extensão direta do padrão do desktop, não uma implementação de spec visual
+  existente; se o design fizer um mockup formal depois, vale conferir contra essa
+  implementação.
+- A altura do hero mobile (`100svh` + espaçamento compacto) foi calibrada pra esse vídeo
+  específico (reveal a 64,8% da altura); se o vídeo mudar de composição (reveal em outra
+  posição), os números precisam ser recalculados.
+- `hero-bg.mp4`/`hero-bg-mobile.mp4` são as versões mais recentes enviadas pelo design;
+  o FigCraft também pede um export 2560×1600 pra Retina no desktop, que pode ser
+  adicionado depois como uma segunda fonte (`<source media>`/`srcset`) sem mudar a
   estrutura.
