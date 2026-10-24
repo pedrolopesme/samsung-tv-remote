@@ -18,23 +18,25 @@
     });
   }
 
-  /* ---------------- Vídeo do hero: fundo full-bleed (desktop) ou palco
-     (mobile) ----------------
-   * Só um dos dois é baixado, de acordo com o breakpoint no load (o `src`
-   * não vem no HTML pra evitar baixar os dois). Toca uma vez e termina
-   * parado no frame final (sem loop, por design). Com prefers-reduced-motion
-   * não toca: fica só no poster/primeiro frame. */
+  /* ---------------- Vídeo de fundo do hero ----------------
+   * Desktop e mobile usam vídeos diferentes (paisagem x retrato) — o `src`
+   * e o `poster` não vêm no HTML, só um é baixado, de acordo com o
+   * breakpoint no load. Toca uma vez e termina parado no frame final (sem
+   * loop, por design). Com prefers-reduced-motion não toca: fica só no
+   * poster/primeiro frame. */
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const isDesktop = window.matchMedia("(min-width: 880px)").matches;
-  const activeVideo = isDesktop
-    ? document.querySelector(".hero__bg-video")
-    : document.querySelector(".stage__video");
-  const activeSrc = isDesktop ? "assets/hero-bg.mp4" : "assets/hero-montagem.mp4";
+  const heroVideo = document.querySelector(".hero__bg-video");
 
-  if (activeVideo) {
-    activeVideo.src = activeSrc;
+  if (heroVideo) {
+    heroVideo.poster = isDesktop
+      ? "assets/hero-bg-poster.jpg"
+      : "assets/hero-bg-mobile-poster.jpg";
+    heroVideo.src = isDesktop
+      ? "assets/hero-bg.mp4"
+      : "assets/hero-bg-mobile.mp4";
     if (!reduceMotion) {
-      activeVideo.play().catch(() => {
+      heroVideo.play().catch(() => {
         /* autoplay bloqueado pelo navegador — fica no poster/primeiro frame */
       });
     }

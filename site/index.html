@@ -50,15 +50,12 @@
   <main id="conteudo">
     <!-- ============ HERO ============ -->
     <section class="hero" id="topo">
-      <!-- Vídeo de fundo full-bleed (desktop): as peças se montam, viram o
-           controle e deslizam pro Mac, parando nesse frame final (sem loop). -->
+      <!-- Vídeo de fundo full-bleed: as peças se montam, viram o controle e
+           deslizam até aparecer no Mac, parando nesse frame final (sem loop).
+           Desktop e mobile usam vídeos diferentes (paisagem x retrato),
+           escolhidos via script.js. -->
       <div class="hero__bg" aria-hidden="true">
-        <video
-          class="hero__bg-video"
-          muted
-          playsinline
-          poster="assets/hero-bg-poster.jpg"
-        ></video>
+        <video class="hero__bg-video" muted playsinline></video>
         <div class="hero__scrim"></div>
       </div>
 
@@ -81,18 +78,6 @@
       </div>
 
       <p class="hero__scroll-hint">role para ver os recursos&nbsp;↓</p>
-
-      <!-- Palco (mobile): animação de montagem das peças do controle (vídeo real) -->
-      <div class="stage" id="stage">
-        <video
-          class="stage__video"
-          muted
-          playsinline
-          aria-label="Animação: as peças do controle físico se montam no controle do Mac, termina parado no controle montado"
-        ></video>
-
-        <p class="stage__scroll-note">montagem em camadas · a animação encaixa as peças no scroll</p>
-      </div>
     </section>
 
     <!-- ============ ANATOMIA ============ -->
